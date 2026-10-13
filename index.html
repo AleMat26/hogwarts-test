@@ -311,18 +311,18 @@ main {
   z-index: 5;
 }
 .modal.open { display: flex; }
-/* Le finestre di creazione/promozione si aprono in alto, riportando la pagina all’inizio. */
+/* La pagina torna all'inizio, mentre le finestre restano centrate nello schermo. */
 #newClassNameModal,
 #newClassYearModal {
-  align-items: flex-start !important;
+  align-items: center !important;
   justify-content: center;
   overflow-y: auto;
-  padding: 24px 20px;
+  padding: 20px;
   box-sizing: border-box;
 }
 #newClassNameModal .dialog,
 #newClassYearModal .dialog {
-  margin-top: 0;
+  margin: auto 0;
   flex: 0 0 auto;
 }
   #newClassNameInput::placeholder {
@@ -2218,7 +2218,7 @@ if (inCastle) {
  
 function askNewClassName(defaultName = '', title = 'Nuova classe') {
   return new Promise(resolve => {
-    // Riporta la pagina in cima prima di aprire la finestra.
+    // Riporta la pagina in cima; la finestra resta centrata nello schermo.
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -2280,7 +2280,7 @@ function finish(value) {
 
 function askNewClassYear(defaultYear, title = 'Anno scolastico') {
   return new Promise(resolve => {
-    // Riporta la pagina in cima prima di aprire la finestra.
+    // Riporta la pagina in cima; la finestra resta centrata nello schermo.
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
