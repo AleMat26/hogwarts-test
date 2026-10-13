@@ -2202,14 +2202,17 @@ if (inCastle) {
 
   
  
-function askNewClassName() {
+function askNewClassName(defaultName = '', title = 'Nuova classe') {
   return new Promise(resolve => {
     const modal = $('newClassNameModal');
     const form = $('newClassNameForm');
     const input = $('newClassNameInput');
     const cancel = $('cancelNewClass');
+    const titleElement = $('newClassNameTitle');
+    const previousTitle = titleElement.textContent;
 
-    input.value = '';
+    titleElement.textContent = title;
+    input.value = defaultName;
 modal.style.display = '';
 modal.classList.add('open');
 input.focus();
@@ -2223,6 +2226,7 @@ function finish(value) {
   cancel.removeEventListener('click', onCancel);
   modal.removeEventListener('click', onBackdrop);
 
+  titleElement.textContent = previousTitle;
   resolve(value);
 }
 
@@ -2250,15 +2254,17 @@ function finish(value) {
   });
 }
 
-function askNewClassYear(defaultYear) {
+function askNewClassYear(defaultYear, title = 'Anno scolastico') {
   return new Promise(resolve => {
     const modal = $('newClassYearModal');
     const form = $('newClassYearForm');
     const input = $('newClassYearInput');
     const cancel = $('cancelNewClassYear');
+    const titleElement = $('newClassYearTitle');
+    const previousTitle = titleElement.textContent;
 
-    
-input.value = defaultYear;
+    titleElement.textContent = title;
+    input.value = defaultYear;
 
 requestAnimationFrame(() => {
   modal.classList.add('open');
@@ -2272,6 +2278,7 @@ requestAnimationFrame(() => {
       form.removeEventListener('submit', onSubmit);
       cancel.removeEventListener('click', onCancel);
       modal.removeEventListener('click', onBackdrop);
+      titleElement.textContent = previousTitle;
       resolve(value);
     }
 
@@ -2364,7 +2371,7 @@ $('newClassBtn').onclick = async () => {
 
 
 
-$('promoteClassBtn').onclick = () => {
+$('promoteClassBtn').onclick = async () => {
     if(activeIsArchived()){ alert('Seleziona una classe attiva da promuovere.'); return; }
     const current = activeClass();
     if(isFinalYearClass(current.name)){
@@ -2385,11 +2392,11 @@ $('promoteClassBtn').onclick = () => {
       return;
     }
     const suggestedName = nextClassName(current.name) || current.name;
-    const name = prompt('Nome della classe per il nuovo anno scolastico:', suggestedName);
+    const name = await askNewClassName(suggestedName, 'Nome della classe per il nuovo anno scolastico');
     if(name === null) return;
     if(!name.trim()){ alert('Inserisci il nome della nuova classe.'); return; }
     const suggestedYear = nextSchoolYear(current.schoolYear);
-    const year = prompt('Anno scolastico della nuova classe:', suggestedYear);
+    const year = await askNewClassYear(suggestedYear, 'Anno scolastico della nuova classe');
     if(year === null) return;
     if(!year.trim()){ alert('Inserisci l’anno scolastico.'); return; }
     const cleanName = name.trim(), cleanYear = year.trim();
