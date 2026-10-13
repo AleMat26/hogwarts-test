@@ -329,8 +329,36 @@ main {
 #modal .dialog h2 { margin-top: 0; text-align: center; }
 .sorting-ceremony { text-align:center; }
 .sorting-ceremony .ceremony-intro { color:#d9d1bf; line-height:1.55; margin:8px 0 20px; }
-.sorting-ceremony .ceremony-title { color:#f2d58a; font-size:19px; line-height:1.3; font-weight:800; margin:8px 0 7px; text-align:center; }
-.sorting-ceremony .ceremony-subtitle { color:#d9d1bf; font-size:14px; line-height:1.45; margin:0 0 20px; text-align:center; }
+
+.sorting-ceremony .ceremony-title {
+  color:#f2d58a;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size:21px;
+  line-height:1.35;
+  font-weight:600;
+  letter-spacing:.2px;
+  margin:4px 0 16px;
+  text-align:center;
+}
+.sorting-ceremony .ceremony-subtitle {
+  color:#d9d1bf;
+  font-size:14px;
+  line-height:1.45;
+  margin:0 0 12px;
+  text-align:center;
+}
+
+/* Riepilogo delle Casate: spazi più compatti */
+.sorting-ceremony.review-houses .ceremony-title {
+  margin:2px 0 16px;
+}
+.sorting-ceremony.review-houses .sorting-houses {
+  gap:10px;
+}
+.sorting-ceremony.review-houses .sorting-house {
+  padding:12px;
+}
+
 .sorting-houses { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; text-align:left; }
 .sorting-house { min-width:0; padding:15px; border:1px solid currentColor; border-radius:14px; background:linear-gradient(150deg,rgba(255,255,255,.055),rgba(0,0,0,.16)); }
 .sorting-house.g { color:#d36b70; background-color:rgba(133,35,43,.16); }
@@ -2602,19 +2630,38 @@ $('promoteClassBtn').onclick = () => {
   };
 
   // Mostra la composizione attuale delle quattro Casate senza modificare alcun dato.
-  $('reviewHousesBtn').onclick = () => {
+
+$('reviewHousesBtn').onclick = () => {
     if(role !== 'teacher' || teacherView !== 'class') return;
+
     const crests = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
+
     const houseCards = houseKey => {
       const members = state.students.filter(student => student.house === houseKey);
       const names = members.map(student => `<span>${esc(student.name)}</span>`).join('');
-      return `<article class="sorting-house ${houseKey}"><div class="sorting-house-head"><span class="sorting-house-crest" aria-hidden="true">${crests[houseKey]}</span><h3>${houses[houseKey]}</h3><span class="sorting-house-count">${members.length} ${members.length === 1 ? 'studente' : 'studenti'}</span></div><div class="sorting-student-list">${names || '<span>Nessuno studente</span>'}</div></article>`;
+
+      return `<article class="sorting-house ${houseKey}">
+        <div class="sorting-house-head">
+          <span class="sorting-house-crest" aria-hidden="true">${crests[houseKey]}</span>
+          <h3>${houses[houseKey]}</h3>
+          <span class="sorting-house-count">${members.length} ${members.length === 1 ? 'studente' : 'studenti'}</span>
+        </div>
+        <div class="sorting-student-list">${names || '<span>Nessuno studente</span>'}</div>
+      </article>`;
     };
+
     $('modalTitle').textContent = 'Le quattro Casate';
-    $('result').innerHTML = `<div class="sorting-ceremony"><p class="ceremony-title">La composizione attuale della classe</p><p class="ceremony-subtitle">Questo riepilogo mostra le assegnazioni già presenti. Non viene effettuato alcun nuovo smistamento.</p><div class="sorting-houses">${Object.keys(houses).map(houseCards).join('')}</div></div>`;
+
+    $('result').innerHTML = `
+      <div class="sorting-ceremony review-houses">
+        <p class="ceremony-title">La composizione attuale della classe ${esc(state.className)}</p>
+        <div class="sorting-houses">${Object.keys(houses).map(houseCards).join('')}</div>
+      </div>`;
+
     $('enterHogwarts').textContent = 'Chiudi';
     $('modal').classList.add('open');
-  };
+};
+
 
   $('sortBtn').onclick = () => {
     $('modalTitle').textContent = 'Il Cappello Parlante';
