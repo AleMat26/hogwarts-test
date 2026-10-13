@@ -311,6 +311,15 @@ main {
   z-index: 5;
 }
 .modal.open { display: flex; }
+/* Le finestre di creazione/promozione si aprono in alto, riportando la pagina all’inizio. */
+#newClassNameModal,
+#newClassYearModal {
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
   #newClassNameInput::placeholder {
   font-style: italic;
   color: #aaa;
@@ -2204,6 +2213,7 @@ if (inCastle) {
  
 function askNewClassName(defaultName = '', title = 'Nuova classe') {
   return new Promise(resolve => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
     const modal = $('newClassNameModal');
     const form = $('newClassNameForm');
     const input = $('newClassNameInput');
@@ -2256,6 +2266,7 @@ function finish(value) {
 
 function askNewClassYear(defaultYear, title = 'Anno scolastico') {
   return new Promise(resolve => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
     const modal = $('newClassYearModal');
     const form = $('newClassYearForm');
     const input = $('newClassYearInput');
