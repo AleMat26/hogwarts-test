@@ -1643,7 +1643,8 @@ if (inCastle) {
     const readOnly = activeIsArchived();
     $('sortBtn').disabled = (role === 'teacher' && teacherView === 'castle') || readOnly || !state.students.length || state.students.every(st => st.house);
     $('reviewHousesBtn').style.display = role === 'teacher' && teacherView === 'class' ? 'inline-block' : 'none';
-    $('reviewHousesBtn').disabled = readOnly || !state.students.length;
+    // La consultazione delle Casate resta disponibile anche per le classi archiviate.
+    $('reviewHousesBtn').disabled = !state.students.length;
     $('studentName').disabled = readOnly;
     $('addStudent').disabled = readOnly;
     // In archivio il menu resta consultabile per cambiare studente e leggere lo storico.
@@ -2757,7 +2758,8 @@ $('promoteClassBtn').onclick = async () => {
   // Mostra la composizione attuale delle quattro Casate senza modificare alcun dato.
 
 $('reviewHousesBtn').onclick = () => {
-    if(role !== 'teacher' || teacherView !== 'class') return;
+    // Consenti la consultazione anche in archivio: la modale è di sola lettura.
+    if(role !== 'teacher' || (teacherView !== 'class' && !activeIsArchived())) return;
 
     const crests = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
 
