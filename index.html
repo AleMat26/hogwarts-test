@@ -1345,7 +1345,7 @@ input, select, .authbox input {
     if(role === 'teacher' && teacherView === 'castle') {
       const activeCount = state.classes.filter(cl => !cl.archived).length;
       const allClassesReset = state.classes.length > 0 && state.classes.every(cl => cl.resetForDeletion);
-      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span>${allClassesReset ? '<button type="button" class="btn small danger" id="deleteAllClassesBtn" title="elimina le classi attive e archiviate" aria-label="Elimina le classi attive e archiviate">🗑️ Elimina tutte le classi</button>' : ''}<br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>`;
+      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span>${allClassesReset ? '<button type="button" class="btn small danger" id="deleteAllClassesBtn" aria-label="Elimina le classi attive e archiviate">🗑️ Elimina tutte le classi</button>' : ''}<br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>`;
     } else if(c) {
       $('activeClassSummary').innerHTML = `<strong>${esc(c.name)}</strong> · Anno scolastico ${esc(c.schoolYear)} <span class="class-status">${c.archived ? 'Sola consultazione' : 'Classe attiva'}</span>${canDeleteClass ? ` <button type="button" class="btn small danger" id="deleteArchivedClassBtn" title="${deleteTitle}">${deleteLabel}</button>` : ''}<br><span style="font-size:13px">${c.students.length} studenti · ${c.students.filter(st => st.house).length} smistati</span>`;
     } else {
