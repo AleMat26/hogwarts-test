@@ -2102,19 +2102,57 @@ input, select, .authbox input {
     showToast(state.classes.length ? 'Classe eliminata: ' + deletedName + '.' : 'Ultima classe eliminata. Il Castello è vuoto.');
   }
 
+  
   $('newClassBtn').onclick = () => {
-    const name = prompt('Nome della nuova classe (es. I H):', 'I H');
-    if(name === null) return;
-    if(!name.trim()){ alert('Inserisci il nome della classe.'); return; }
-    const year = prompt('Anno scolastico (es. 2027–2028):', state.schoolYear || DEFAULT_YEAR);
-    if(year === null) return;
-    if(!year.trim()){ alert('Inserisci l’anno scolastico.'); return; }
-    const cleanName = name.trim(), cleanYear = year.trim();
-    if(state.classes.some(c => c.name.toLocaleLowerCase('it') === cleanName.toLocaleLowerCase('it') && c.schoolYear === cleanYear)){
-      alert('Esiste già una classe con questo nome nello stesso anno scolastico.'); return;
+    const name = prompt('Nome della nuova classe (es. I H):', '');
+    if (name === null) return;
+
+    const cleanName = name.trim();
+    if (!cleanName) {
+      alert('Inserisci il nome della classe.');
+      return;
     }
+
+    const now = new Date();
+    const calendarYear = now.getFullYear();
+    const firstYear = now.getMonth() >= 8
+      ? calendarYear
+      : calendarYear - 1;
+    const suggestedYear = firstYear + '–' + (firstYear + 1);
+
+    const year = prompt(
+      'Anno scolastico (es. 2026–2027):',
+      suggestedYear
+    );
+    if (year === null) return;
+
+    const cleanYear = year.trim();
+    if (!cleanYear) {
+      alert('Inserisci l’anno scolastico.');
+      return;
+    }
+
+    if (state.classes.some(c =>
+      c.name.toLocaleLowerCase('it') === cleanName.toLocaleLowerCase('it') &&
+      c.schoolYear === cleanYear
+    )) {
+      alert('Esiste già una classe con questo nome nello stesso anno scolastico.');
+      return;
+    }
+
     const id = nextUniqueClassId();
-    state.classes.push({ id, clientId: id, name: cleanName, schoolYear: cleanYear, students: [], nextId: 1, archived: false, resetForDeletion: false });
+
+    state.classes.push({
+      id,
+      clientId: id,
+      name: cleanName,
+      schoolYear: cleanYear,
+      students: [],
+      nextId: 1,
+      archived: false,
+      resetForDeletion: false
+    });
+
     switchClass(id);
   };
 
