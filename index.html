@@ -1473,7 +1473,7 @@ if (inCastle) {
     $('pointsCard').style.display = role === 'teacher' && teacherView === 'class' && $('pointsBtn').classList.contains('primary') ? 'block' : 'none';
 
     document.querySelectorAll('.house').forEach(card => {
-      const isTeacher = role === 'teacher' && ['class','castle'].includes(teacherView);
+      const isTeacher = role === 'teacher' && (['class','castle'].includes(teacherView) || activeIsArchived());
       card.classList.toggle('clickable', isTeacher);
       card.classList.toggle('selected', isTeacher && card.dataset.houseCard === selectedHouse);
       card.tabIndex = isTeacher ? 0 : -1;
@@ -1542,7 +1542,7 @@ if (inCastle) {
   }
 
   function renderHouseStudents(){
-    if(role !== 'teacher' || !selectedHouse || !['class','castle'].includes(teacherView)) {
+    if(role !== 'teacher' || !selectedHouse || (!['class','castle'].includes(teacherView) && !activeIsArchived())) {
       $('houseStudentsPanel').style.display = 'none';
       return;
     }
@@ -1742,7 +1742,7 @@ if (inCastle) {
   // Le schede delle Casate mostrano l'elenco soltanto in modalità docente.
   document.querySelectorAll('.house').forEach(card => {
     const openHouse = () => {
-      if(role !== 'teacher' || !['class','castle'].includes(teacherView)) return;
+      if(role !== 'teacher' || (!['class','castle'].includes(teacherView) && !activeIsArchived())) return;
       const key = card.dataset.houseCard;
       selectedHouse = selectedHouse === key ? null : key;
       // Aprire l'elenco della Casata chiude sempre i pannelli operativi.
