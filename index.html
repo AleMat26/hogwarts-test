@@ -314,16 +314,34 @@ main {
 /* La pagina torna all'inizio, mentre le finestre restano centrate nello schermo. */
 #newClassNameModal,
 #newClassYearModal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: none;
   align-items: center !important;
-  justify-content: center;
-  overflow-y: auto;
+  justify-content: center !important;
+  overflow: hidden;
   padding: 20px;
   box-sizing: border-box;
 }
+#newClassNameModal.open,
+#newClassYearModal.open {
+  display: flex !important;
+}
 #newClassNameModal .dialog,
 #newClassYearModal .dialog {
-  margin: auto 0;
-  flex: 0 0 auto;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  flex: 0 1 560px;
+  width: min(560px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
 }
   #newClassNameInput::placeholder {
   font-style: italic;
