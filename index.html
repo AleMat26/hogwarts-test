@@ -1376,7 +1376,7 @@ input, select, .authbox input {
     if(role === 'teacher' && teacherView === 'castle') {
       const activeCount = state.classes.filter(cl => !cl.archived).length;
       const allClassesReset = state.classes.length > 0 && state.classes.every(cl => cl.resetForDeletion);
-      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>${allClassesReset ? '<br><button type="button" class="btn small danger" id="deleteAllResetClassesBtn" title="Elimina definitivamente tutte le classi già azzerate">🗑️ Elimina tutte le classi azzerate</button>' : ''}`;
+      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>${allClassesReset ? ' <button type="button" class="btn small danger" id="deleteAllResetClassesBtn">🗑️ Elimina tutte le classi azzerate</button>' : ''}`;
     } else if(c) {
       $('activeClassSummary').innerHTML = `<strong>${esc(c.name)}</strong> · Anno scolastico ${esc(c.schoolYear)} <span class="class-status">${c.archived ? 'Sola consultazione' : 'Classe attiva'}</span>${canDeleteClass ? ` <button type="button" class="btn small danger" id="deleteArchivedClassBtn" title="${deleteTitle}">${deleteLabel}</button>` : ''}<br><span style="font-size:13px">${c.students.length} studenti · ${c.students.filter(st => st.house).length} smistati</span>`;
     } else {
@@ -2209,7 +2209,7 @@ if (inCastle) {
       return;
     }
     const count = state.classes.length;
-    if(!confirm('Vuoi eliminare definitivamente TUTTE le classi già azzerate?\n\nSaranno eliminati classi, studenti, Casate, punteggi e storico associato, anche dal database sincronizzato. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.')) return;
+    if(!confirm('Vuoi eliminare definitivamente TUTTE (attive e archiviate) le classi già azzerate?\n\nSaranno eliminati classi, studenti, Casate, punteggi e storico associato, anche dal database sincronizzato. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.')) return;
     state.classes = [];
     state.activeClassId = null;
     state.className = 'Castello';
