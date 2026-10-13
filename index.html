@@ -1725,8 +1725,8 @@ input, select, .authbox input {
     if(classError) throw classError;
     // Se il database è ancora vuoto ma questo browser contiene classi locali, chiediamo esplicitamente se importarle.
     // In questo modo il primo accesso non sovrascrive silenziosamente il lavoro preesistente.
-    if((remoteClasses || []).length === 0){
-      try {
+  if(false && (remoteClasses || []).length === 0){
+  try {
         const localRaw = JSON.parse(localStorage.getItem(KEY) || 'null');
         const localCandidate = localRaw ? normalizeState(localRaw) : null;
         // La vecchia migrazione può lasciare nel browser una sola II H vuota,
