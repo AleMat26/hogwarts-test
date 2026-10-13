@@ -314,11 +314,16 @@ main {
 /* Le finestre di creazione/promozione si aprono in alto, riportando la pagina all’inizio. */
 #newClassNameModal,
 #newClassYearModal {
-  align-items: flex-start;
+  align-items: flex-start !important;
   justify-content: center;
   overflow-y: auto;
-  padding-top: 24px;
-  padding-bottom: 24px;
+  padding: 24px 20px;
+  box-sizing: border-box;
+}
+#newClassNameModal .dialog,
+#newClassYearModal .dialog {
+  margin-top: 0;
+  flex: 0 0 auto;
 }
   #newClassNameInput::placeholder {
   font-style: italic;
@@ -2213,7 +2218,10 @@ if (inCastle) {
  
 function askNewClassName(defaultName = '', title = 'Nuova classe') {
   return new Promise(resolve => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    // Riporta la pagina in cima prima di aprire la finestra.
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     const modal = $('newClassNameModal');
     const form = $('newClassNameForm');
     const input = $('newClassNameInput');
@@ -2225,7 +2233,13 @@ function askNewClassName(defaultName = '', title = 'Nuova classe') {
     input.value = defaultName;
 modal.style.display = '';
 modal.classList.add('open');
-input.focus();
+// Il focus non deve far scorrere nuovamente la pagina verso il vecchio punto.
+try { input.focus({ preventScroll: true }); } catch(e) { input.focus(); }
+requestAnimationFrame(() => {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+});
 
     
 function finish(value) {
@@ -2266,7 +2280,10 @@ function finish(value) {
 
 function askNewClassYear(defaultYear, title = 'Anno scolastico') {
   return new Promise(resolve => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    // Riporta la pagina in cima prima di aprire la finestra.
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     const modal = $('newClassYearModal');
     const form = $('newClassYearForm');
     const input = $('newClassYearInput');
@@ -2279,8 +2296,12 @@ function askNewClassYear(defaultYear, title = 'Anno scolastico') {
 
 requestAnimationFrame(() => {
   modal.classList.add('open');
-  input.focus();
+  try { input.focus({ preventScroll: true }); } catch(e) { input.focus(); }
   input.select();
+  // Ripristina la posizione dopo l'apertura e il focus del campo.
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 });
 
 
