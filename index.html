@@ -964,7 +964,7 @@ input, select, .authbox input {
   <div class="controls teacher-controls" id="teacherControls" style="display:none">
     <div class="controls-row">
       <button type="button" class="btn primary" id="sortBtn">🎩 Cappello Parlante</button>
-      <button type="button" class="btn" id="reviewHousesBtn">📜 Rivedi le quattro Casate</button>
+      <button type="button" class="btn" id="reviewHousesBtn">📜 Le quattro Casate</button>
       <button type="button" class="btn" id="castleViewBtn">🏰 Visualizza Castello</button>
       <button type="button" class="btn" id="logoutBtn">🚪 Esci</button>
     </div>
@@ -2295,6 +2295,18 @@ function openCenteredModalAfterScroll(modal, input, selectText = false) {
   if (selectText) input.select();
 }
 
+function openCeremonyModalAfterScroll() {
+  // Come per le finestre Nuova classe/Promozione: prima riportiamo la pagina
+  // all'inizio, poi apriamo la modale centrata nel viewport ormai visibile.
+  const restoreScrollBehavior = scrollPageToTopImmediately();
+  const modal = $('modal');
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  requestAnimationFrame(() => {
+    modal.classList.add('open');
+    requestAnimationFrame(restoreScrollBehavior);
+  });
+}
+
 function askNewClassName(defaultName = '', title = 'Nuova classe') {
   return new Promise(resolve => {
     const restoreScrollBehavior = scrollPageToTopImmediately();
@@ -2772,7 +2784,7 @@ $('reviewHousesBtn').onclick = () => {
       </div>`;
 
     $('enterHogwarts').textContent = 'Chiudi';
-    $('modal').classList.add('open');
+    openCeremonyModalAfterScroll();
 };
 
 
@@ -2783,7 +2795,7 @@ $('reviewHousesBtn').onclick = () => {
     const u = state.students.filter(s => !s.house);
     if(!u.length){
       $('result').innerHTML = '<div class="sorting-ceremony"><p class="ceremony-intro">Tutti gli studenti sono già stati assegnati a una Casata. Il Cappello Parlante non deve effettuare altri smistamenti.</p></div>';
-      $('modal').classList.add('open');
+      openCeremonyModalAfterScroll();
       return;
     }
 
@@ -2822,7 +2834,7 @@ $('reviewHousesBtn').onclick = () => {
     } else {
       $('result').innerHTML = `<div class="sorting-ceremony"><p class="ceremony-title">La cerimonia dello smistamento è compiuta</p><p class="ceremony-subtitle">Ecco le quattro Casate e gli studenti che ne fanno parte.</p><div class="sorting-houses">${k.map(houseCards).join('')}</div></div>`;
     }
-    $('modal').classList.add('open');
+    openCeremonyModalAfterScroll();
   };
 
   $('close').onclick = () => $('modal').classList.remove('open');
