@@ -2848,13 +2848,17 @@ $('reviewHousesBtn').onclick = () => {
   $('resetBtn').onclick = () => {
     if(role === 'teacher' && teacherView === 'castle') {
       if(!state.classes.length) { showToast('Non ci sono classi da azzerare.'); return; }
-      if(!confirm('Vuoi azzerare TUTTE le classi, comprese quelle in archivio?\n\nSaranno rimossi smistamenti, punti e storico di ogni studente. Gli studenti e le classi resteranno presenti, ma tutte le Casate ripartiranno da zero. Questa operazione non si può annullare: esporta prima un backup JSON.')) return;
+      if(!confirm('Vuoi azzerare TUTTE le classi, comprese quelle in archivio?\n\nSaranno eliminati gli studenti, gli smistamenti, i punti e lo storico di ogni classe. Le classi resteranno presenti e contrassegnate come azzerate, pronte per essere cancellate. Questa operazione non si può annullare: esporta prima un backup JSON.')) return;
       state.classes.forEach(c => {
-        c.students.forEach(st => { st.house = null; st.points = 0; st.history = []; });
+        // L'azzeramento prepara la classe alla cancellazione: elimina anche il roster.
+        // La sincronizzazione successiva rimuove studenti e storico dal database.
+        c.students = [];
+        c.nextId = 1;
         c.resetForDeletion = true;
       });
       const active = activeClass();
       if(active) { state.className = active.name; state.schoolYear = active.schoolYear; state.students = active.students; state.nextId = active.nextId; }
+      else { state.students = []; state.nextId = 1; }
       selectedHouse = null;
       $('houseStudentsPanel').style.display = 'none';
       $('classCard').style.display = 'none';
@@ -2870,12 +2874,21 @@ $('reviewHousesBtn').onclick = () => {
       return;
     }
     if(activeIsArchived()){ showToast('Questa classe è in archivio e non può essere modificata.'); return; }
-    if(confirm('Azzera smistamenti, voti e punteggi della sola classe ' + state.className + '?')){
-      state.students.forEach(s => { s.house = null; s.points = 0; s.history = []; });
+    if(confirm('Vuoi azzerare la classe ' + state.className + '?\n\nSaranno eliminati gli studenti, gli smistamenti, i punti e lo storico. La classe resterà presente e contrassegnata come azzerata, pronta per essere cancellata. Questa operazione non si può annullare: esporta prima un backup JSON.')){
       const resetClass = activeClass();
-      if(resetClass) resetClass.resetForDeletion = true;
+      if(resetClass){
+        resetClass.students = [];
+        resetClass.nextId = 1;
+        resetClass.resetForDeletion = true;
+        state.students = resetClass.students;
+        state.nextId = resetClass.nextId;
+      } else {
+        state.students = [];
+        state.nextId = 1;
+      }
       save();
       render();
+      showToast('Classe azzerata: elenco studenti e storico eliminati.');
     }
   };
 
