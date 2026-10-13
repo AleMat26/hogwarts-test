@@ -1339,7 +1339,8 @@ input, select, .authbox input {
     const deleteTitle = c && c.archived ? 'Elimina definitivamente questa classe archiviata' : 'Elimina definitivamente questa classe dopo l’azzeramento';
     if(role === 'teacher' && teacherView === 'castle') {
       const activeCount = state.classes.filter(cl => !cl.archived).length;
-      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>`;
+      const allClassesReset = state.classes.length > 0 && state.classes.every(cl => cl.resetForDeletion);
+      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>${allClassesReset ? '<br><button type="button" class="btn small danger" id="deleteAllClassesBtn" title="Elimina definitivamente tutte le classi attive e archiviate">🗑️ Elimina tutte le classi</button>' : ''}`;
     } else if(c) {
       $('activeClassSummary').innerHTML = `<strong>${esc(c.name)}</strong> · Anno scolastico ${esc(c.schoolYear)} <span class="class-status">${c.archived ? 'Sola consultazione' : 'Classe attiva'}</span>${canDeleteClass ? ` <button type="button" class="btn small danger" id="deleteArchivedClassBtn" title="${deleteTitle}">${deleteLabel}</button>` : ''}<br><span style="font-size:13px">${c.students.length} studenti · ${c.students.filter(st => st.house).length} smistati</span>`;
     } else {
@@ -1351,6 +1352,9 @@ input, select, .authbox input {
     $('promoteClassBtn').title = !c ? 'Crea prima una classe.' : activeIsArchived() ? 'La classe archiviata è in sola consultazione.' : finalYear ? 'Conclude il percorso e archivia la classe quinta.' : 'Crea la classe dell’anno successivo conservando le Casate.';
     const deleteArchivedBtn = $('deleteArchivedClassBtn');
     if(deleteArchivedBtn) deleteArchivedBtn.onclick = deleteArchivedClass;
+
+    const deleteAllClassesBtn = $('deleteAllClassesBtn');
+    if(deleteAllClassesBtn) deleteAllClassesBtn.onclick = deleteAllClasses;
     
 const resetBtn = $('resetBtn');
 const inCastle = role === 'teacher' && teacherView === 'castle';
@@ -2191,8 +2195,44 @@ if (inCastle) {
     showToast(state.classes.length ? 'Classe eliminata: ' + deletedName + '.' : 'Ultima classe eliminata. Il Castello è vuoto.');
   }
 
-  
- 
+
+  function deleteAllClasses(){
+    const allClassesReset = state.classes.length > 0 && state.classes.every(c => c.resetForDeletion);
+    if(role !== 'teacher' || teacherView !== 'castle' || !allClassesReset){
+      showToast('Puoi eliminare tutte le classi soltanto dopo averle azzerate dal Castello.');
+      return;
+    }
+    const activeCount = state.classes.filter(c => !c.archived).length;
+    const archivedCount = state.classes.filter(c => c.archived).length;
+    const confirmation = 'Vuoi eliminare DEFINITIVAMENTE tutte le classi, attive e archiviate?\n\nSaranno cancellate tutte le classi (' + state.classes.length + '), gli studenti, le Casate, i punteggi e gli storici associati. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.';
+    if(!confirm(confirmation)) return;
+
+    // La cancellazione è esplicita e confermata: conserva una fotografia delle classi
+    // prima di svuotare lo stato, così la sincronizzazione può rimuoverle anche da Supabase.
+    if(lastSyncedClasses === null) lastSyncedClasses = cloneClasses();
+    state.classes = [];
+    state.activeClassId = null;
+    state.className = 'Castello';
+    state.schoolYear = DEFAULT_YEAR;
+    state.students = [];
+    state.nextId = 1;
+    teacherView = 'castle';
+    publicClassId = ALL_ACTIVE_CLASSES;
+    selectedHouse = null;
+    resetPointsSelection = true;
+    $('houseStudentsPanel').style.display = 'none';
+    $('classCard').style.display = 'none';
+    $('pointsCard').style.display = 'none';
+    $('manageBtn').classList.remove('primary');
+    $('pointsBtn').classList.remove('primary');
+    $('gradeInput').value = '';
+    $('castleStudentSearchInput').value = '';
+    $('castleStudentSearchResults').innerHTML = '<div class="castle-student-search-empty">Digita un nome per cercare uno studente in tutte le classi.</div>';
+
+    save();
+    render();
+    showToast('Eliminate tutte le classi (' + activeCount + ' attive, ' + archivedCount + ' archiviate). Il Castello è vuoto.');
+  }
 function askNewClassName() {
   return new Promise(resolve => {
     const modal = $('newClassNameModal');
