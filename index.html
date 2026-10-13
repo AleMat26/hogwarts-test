@@ -822,12 +822,7 @@ input, select, .authbox input {
 }
 .btn.danger:hover { background: linear-gradient(135deg, rgba(161,59,59,.98), rgba(112,43,47,.98)); }
 .class-status { vertical-align: middle; }
-#activeClassSummary .btn { margin: 0 0 0 8px; vertical-align: middle; }
-/* Pannello gestione classi e riquadri Castello leggermente più compatti. */
-#classManager { padding: 17px 20px; }
-#classManager h3 { margin-bottom: 12px; }
-#classManager .class-manager-note { margin-top: 7px; line-height: 1.4; }
-.castle-class-card { padding: 10px 12px; }
+#activeClassSummary .btn { margin: 6px 0; vertical-align: middle; }
 
 /* Selettore pubblico: resta separato dalla classe scelta nel pannello docente. */
 .public-class-picker {
@@ -1156,6 +1151,10 @@ input, select, .authbox input {
     const match = String(name || '').trim().match(/^[IVXLCDM]+\s+([A-Za-z]+)/i);
     return match ? match[1].toLocaleUpperCase('it') : 'ZZZ';
   }
+  // Confronta nomi e anni in modo uniforme: evita doppioni dovuti a spazi,
+  // maiuscole/minuscole o all'uso di trattini diversi nell'anno scolastico.
+  function normalizeClassName(name){ return String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('it'); }
+  function normalizeSchoolYear(year){ return String(year || '').trim().replace(/[–—−]/g, '-').replace(/\s+/g, ''); }
   function compareClasses(a,b){
     const sectionOrder = classSection(a.name).localeCompare(classSection(b.name),'it');
     if(sectionOrder) return sectionOrder;
@@ -1344,8 +1343,7 @@ input, select, .authbox input {
     const deleteTitle = c && c.archived ? 'Elimina definitivamente questa classe archiviata' : 'Elimina definitivamente questa classe dopo l’azzeramento';
     if(role === 'teacher' && teacherView === 'castle') {
       const activeCount = state.classes.filter(cl => !cl.archived).length;
-      const allClassesReset = state.classes.length > 0 && state.classes.every(cl => cl.resetForDeletion);
-      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span>${allClassesReset ? '<button type="button" class="btn small danger" id="deleteAllClassesBtn" aria-label="Elimina le classi attive e archiviate">🗑️ Elimina tutte le classi</button>' : ''}<br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>`;
+      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>`;
     } else if(c) {
       $('activeClassSummary').innerHTML = `<strong>${esc(c.name)}</strong> · Anno scolastico ${esc(c.schoolYear)} <span class="class-status">${c.archived ? 'Sola consultazione' : 'Classe attiva'}</span>${canDeleteClass ? ` <button type="button" class="btn small danger" id="deleteArchivedClassBtn" title="${deleteTitle}">${deleteLabel}</button>` : ''}<br><span style="font-size:13px">${c.students.length} studenti · ${c.students.filter(st => st.house).length} smistati</span>`;
     } else {
@@ -1357,9 +1355,6 @@ input, select, .authbox input {
     $('promoteClassBtn').title = !c ? 'Crea prima una classe.' : activeIsArchived() ? 'La classe archiviata è in sola consultazione.' : finalYear ? 'Conclude il percorso e archivia la classe quinta.' : 'Crea la classe dell’anno successivo conservando le Casate.';
     const deleteArchivedBtn = $('deleteArchivedClassBtn');
     if(deleteArchivedBtn) deleteArchivedBtn.onclick = deleteArchivedClass;
-
-    const deleteAllClassesBtn = $('deleteAllClassesBtn');
-    if(deleteAllClassesBtn) deleteAllClassesBtn.onclick = deleteAllClasses;
     
 const resetBtn = $('resetBtn');
 const inCastle = role === 'teacher' && teacherView === 'castle';
@@ -2139,7 +2134,10 @@ if (inCastle) {
     }
     if(role === 'teacher') teacherView = 'class';
     resetPointsSelection = true;
-    save();
+    // Salva la classe precedente solo se esiste davvero una selezione attiva.
+    // Quando il Castello è vuoto activeClassId è null: save() userebbe altrimenti
+    // il nome segnaposto "Castello" e lo assegnerebbe alla prima classe appena creata.
+    if(state.activeClassId != null && state.classes.some(c => String(c.id) === String(state.activeClassId))) save();
     state.activeClassId = target.id;
     state.className = target.name;
     state.schoolYear = target.schoolYear;
@@ -2200,44 +2198,8 @@ if (inCastle) {
     showToast(state.classes.length ? 'Classe eliminata: ' + deletedName + '.' : 'Ultima classe eliminata. Il Castello è vuoto.');
   }
 
-
-  function deleteAllClasses(){
-    const allClassesReset = state.classes.length > 0 && state.classes.every(c => c.resetForDeletion);
-    if(role !== 'teacher' || teacherView !== 'castle' || !allClassesReset){
-      showToast('Puoi eliminare tutte le classi soltanto dopo averle azzerate dal Castello.');
-      return;
-    }
-    const activeCount = state.classes.filter(c => !c.archived).length;
-    const archivedCount = state.classes.filter(c => c.archived).length;
-    const confirmation = 'Vuoi eliminare DEFINITIVAMENTE tutte le classi, attive e archiviate?\n\nSaranno cancellate tutte le classi (' + state.classes.length + '), gli studenti, le Casate, i punteggi e gli storici associati. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.';
-    if(!confirm(confirmation)) return;
-
-    // La cancellazione è esplicita e confermata: conserva una fotografia delle classi
-    // prima di svuotare lo stato, così la sincronizzazione può rimuoverle anche da Supabase.
-    if(lastSyncedClasses === null) lastSyncedClasses = cloneClasses();
-    state.classes = [];
-    state.activeClassId = null;
-    state.className = 'Castello';
-    state.schoolYear = DEFAULT_YEAR;
-    state.students = [];
-    state.nextId = 1;
-    teacherView = 'castle';
-    publicClassId = ALL_ACTIVE_CLASSES;
-    selectedHouse = null;
-    resetPointsSelection = true;
-    $('houseStudentsPanel').style.display = 'none';
-    $('classCard').style.display = 'none';
-    $('pointsCard').style.display = 'none';
-    $('manageBtn').classList.remove('primary');
-    $('pointsBtn').classList.remove('primary');
-    $('gradeInput').value = '';
-    $('castleStudentSearchInput').value = '';
-    $('castleStudentSearchResults').innerHTML = '<div class="castle-student-search-empty">Digita un nome per cercare uno studente in tutte le classi.</div>';
-
-    save();
-    render();
-    showToast('Eliminate tutte le classi (' + activeCount + ' attive, ' + archivedCount + ' archiviate). Il Castello è vuoto.');
-  }
+  
+ 
 function askNewClassName() {
   return new Promise(resolve => {
     const modal = $('newClassNameModal');
@@ -2362,9 +2324,14 @@ $('newClassBtn').onclick = async () => {
 
     retryYear = cleanYear;
 
+    if (normalizeClassName(cleanName) === 'castello') {
+      alert('“Castello” è la schermata riepilogativa, non una classe scolastica. Inserisci il nome di una classe, ad esempio I H.');
+      continue;
+    }
+
     const alreadyExists = state.classes.some(c =>
-      c.name.toLocaleLowerCase('it') === cleanName.toLocaleLowerCase('it') &&
-      c.schoolYear === cleanYear
+      normalizeClassName(c.name) === normalizeClassName(cleanName) &&
+      normalizeSchoolYear(c.schoolYear) === normalizeSchoolYear(cleanYear)
     );
 
     if (alreadyExists) {
@@ -2424,7 +2391,10 @@ $('promoteClassBtn').onclick = () => {
     if(year === null) return;
     if(!year.trim()){ alert('Inserisci l’anno scolastico.'); return; }
     const cleanName = name.trim(), cleanYear = year.trim();
-    if(state.classes.some(c => c.name.toLocaleLowerCase('it') === cleanName.toLocaleLowerCase('it') && c.schoolYear === cleanYear)){
+    if(normalizeClassName(cleanName) === 'castello'){
+      alert('“Castello” è la schermata riepilogativa, non una classe scolastica.'); return;
+    }
+    if(state.classes.some(c => normalizeClassName(c.name) === normalizeClassName(cleanName) && normalizeSchoolYear(c.schoolYear) === normalizeSchoolYear(cleanYear))){
       alert('Esiste già una classe con questo nome nello stesso anno scolastico.'); return;
     }
     if(!confirm('Creare ' + cleanName + ' · ' + cleanYear + ' copiando i nomi e le Casate di ' + current.name + '? I punteggi e gli storici del nuovo anno partiranno da zero. La classe attuale resterà nell’archivio e non sarà modificabile.')) return;
