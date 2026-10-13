@@ -2234,12 +2234,31 @@ if (inCastle) {
 
   
  
+function scrollPageToTopImmediately() {
+  // Disattiva temporaneamente lo smooth scroll: la modale deve aprirsi
+  // solo dopo che la pagina è davvero arrivata in cima.
+  const root = document.documentElement;
+  const previousBehavior = root.style.scrollBehavior;
+  root.style.scrollBehavior = 'auto';
+  window.scrollTo(0, 0);
+  root.scrollTop = 0;
+  document.body.scrollTop = 0;
+  return () => { root.style.scrollBehavior = previousBehavior; };
+}
+
+function openCenteredModalAfterScroll(modal, input, selectText = false) {
+  // Portando la modale direttamente sotto body, il suo posizionamento fixed
+  // è relativo al viewport e non viene influenzato dal contenitore dell'app.
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  modal.style.display = '';
+  modal.classList.add('open');
+  try { input.focus({ preventScroll: true }); } catch(e) { /* focus senza scroll non supportato */ }
+  if (selectText) input.select();
+}
+
 function askNewClassName(defaultName = '', title = 'Nuova classe') {
   return new Promise(resolve => {
-    // Riporta la pagina in cima; la finestra resta centrata nello schermo.
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    const restoreScrollBehavior = scrollPageToTopImmediately();
     const modal = $('newClassNameModal');
     const form = $('newClassNameForm');
     const input = $('newClassNameInput');
@@ -2249,82 +2268,17 @@ function askNewClassName(defaultName = '', title = 'Nuova classe') {
 
     titleElement.textContent = title;
     input.value = defaultName;
-modal.style.display = '';
-modal.classList.add('open');
-// Il focus non deve far scorrere nuovamente la pagina verso il vecchio punto.
-try { input.focus({ preventScroll: true }); } catch(e) { input.focus(); }
-requestAnimationFrame(() => {
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-});
 
-    
-function finish(value) {
-  modal.classList.remove('open');
-  modal.style.display = 'none';
-
-  form.removeEventListener('submit', onSubmit);
-  cancel.removeEventListener('click', onCancel);
-  modal.removeEventListener('click', onBackdrop);
-
-  titleElement.textContent = previousTitle;
-  resolve(value);
-}
-
-
-    function onSubmit(event) {
-      event.preventDefault();
-      if (!input.value.trim()) {
-        input.focus();
-        return;
-      }
-      finish(input.value);
-    }
-
-    function onCancel() {
-      finish(null);
-    }
-
-    function onBackdrop(event) {
-      if (event.target === modal) finish(null);
-    }
-
-    form.addEventListener('submit', onSubmit);
-    cancel.addEventListener('click', onCancel);
-    modal.addEventListener('click', onBackdrop);
-  });
-}
-
-function askNewClassYear(defaultYear, title = 'Anno scolastico') {
-  return new Promise(resolve => {
-    // Riporta la pagina in cima; la finestra resta centrata nello schermo.
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    const modal = $('newClassYearModal');
-    const form = $('newClassYearForm');
-    const input = $('newClassYearInput');
-    const cancel = $('cancelNewClassYear');
-    const titleElement = $('newClassYearTitle');
-    const previousTitle = titleElement.textContent;
-
-    titleElement.textContent = title;
-    input.value = defaultYear;
-
-requestAnimationFrame(() => {
-  modal.classList.add('open');
-  try { input.focus({ preventScroll: true }); } catch(e) { input.focus(); }
-  input.select();
-  // Ripristina la posizione dopo l'apertura e il focus del campo.
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-});
-
+    // Aspetta il frame successivo: la pagina è già in cima e la modale viene
+    // centrata sullo schermo effettivamente visibile in quel momento.
+    requestAnimationFrame(() => {
+      openCenteredModalAfterScroll(modal, input);
+      requestAnimationFrame(restoreScrollBehavior);
+    });
 
     function finish(value) {
       modal.classList.remove('open');
+      modal.style.display = 'none';
       form.removeEventListener('submit', onSubmit);
       cancel.removeEventListener('click', onCancel);
       modal.removeEventListener('click', onBackdrop);
@@ -2335,19 +2289,57 @@ requestAnimationFrame(() => {
     function onSubmit(event) {
       event.preventDefault();
       if (!input.value.trim()) {
-        input.focus();
+        input.focus({ preventScroll: true });
         return;
       }
       finish(input.value);
     }
+    function onCancel() { finish(null); }
+    function onBackdrop(event) { if (event.target === modal) finish(null); }
 
-    function onCancel() {
-      finish(null);
-    }
+    form.addEventListener('submit', onSubmit);
+    cancel.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+  });
+}
 
-    function onBackdrop(event) {
-      if (event.target === modal) finish(null);
+function askNewClassYear(defaultYear, title = 'Anno scolastico') {
+  return new Promise(resolve => {
+    const restoreScrollBehavior = scrollPageToTopImmediately();
+    const modal = $('newClassYearModal');
+    const form = $('newClassYearForm');
+    const input = $('newClassYearInput');
+    const cancel = $('cancelNewClassYear');
+    const titleElement = $('newClassYearTitle');
+    const previousTitle = titleElement.textContent;
+
+    titleElement.textContent = title;
+    input.value = defaultYear;
+
+    requestAnimationFrame(() => {
+      openCenteredModalAfterScroll(modal, input, true);
+      requestAnimationFrame(restoreScrollBehavior);
+    });
+
+    function finish(value) {
+      modal.classList.remove('open');
+      modal.style.display = 'none';
+      form.removeEventListener('submit', onSubmit);
+      cancel.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      titleElement.textContent = previousTitle;
+      resolve(value);
     }
+    function onSubmit(event) {
+      event.preventDefault();
+      if (!input.value.trim()) {
+        input.focus({ preventScroll: true });
+        return;
+      }
+      finish(input.value);
+    }
+    function onCancel() { finish(null); }
+    function onBackdrop(event) { if (event.target === modal) finish(null); }
 
     form.addEventListener('submit', onSubmit);
     cancel.addEventListener('click', onCancel);
