@@ -2200,10 +2200,15 @@ function askNewClassYear(defaultYear) {
     const input = $('newClassYearInput');
     const cancel = $('cancelNewClassYear');
 
-    input.value = defaultYear;
-    modal.classList.add('open');
-    input.focus();
-    input.select();
+    
+input.value = defaultYear;
+
+requestAnimationFrame(() => {
+  modal.classList.add('open');
+  input.focus();
+  input.select();
+});
+
 
     function finish(value) {
       modal.classList.remove('open');
