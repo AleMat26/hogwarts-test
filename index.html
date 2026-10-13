@@ -1375,7 +1375,8 @@ input, select, .authbox input {
     const deleteTitle = c && c.archived ? 'Elimina definitivamente questa classe archiviata' : 'Elimina definitivamente questa classe dopo l’azzeramento';
     if(role === 'teacher' && teacherView === 'castle') {
       const activeCount = state.classes.filter(cl => !cl.archived).length;
-      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>`;
+      const allClassesReset = state.classes.length > 0 && state.classes.every(cl => cl.resetForDeletion);
+      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>${allClassesReset ? '<br><button type="button" class="btn small danger" id="deleteAllResetClassesBtn" title="Elimina definitivamente tutte le classi già azzerate">🗑️ Elimina tutte le classi azzerate</button>' : ''}`;
     } else if(c) {
       $('activeClassSummary').innerHTML = `<strong>${esc(c.name)}</strong> · Anno scolastico ${esc(c.schoolYear)} <span class="class-status">${c.archived ? 'Sola consultazione' : 'Classe attiva'}</span>${canDeleteClass ? ` <button type="button" class="btn small danger" id="deleteArchivedClassBtn" title="${deleteTitle}">${deleteLabel}</button>` : ''}<br><span style="font-size:13px">${c.students.length} studenti · ${c.students.filter(st => st.house).length} smistati</span>`;
     } else {
@@ -1387,6 +1388,8 @@ input, select, .authbox input {
     $('promoteClassBtn').title = !c ? 'Crea prima una classe.' : activeIsArchived() ? 'La classe archiviata è in sola consultazione.' : finalYear ? 'Conclude il percorso e archivia la classe quinta.' : 'Crea la classe dell’anno successivo conservando le Casate.';
     const deleteArchivedBtn = $('deleteArchivedClassBtn');
     if(deleteArchivedBtn) deleteArchivedBtn.onclick = deleteArchivedClass;
+    const deleteAllResetClassesBtn = $('deleteAllResetClassesBtn');
+    if(deleteAllResetClassesBtn) deleteAllResetClassesBtn.onclick = deleteAllResetClasses;
     
 const resetBtn = $('resetBtn');
 const inCastle = role === 'teacher' && teacherView === 'castle';
@@ -2194,6 +2197,40 @@ if (inCastle) {
   }
 
   $('activeClassSelect').onchange = e => switchClass(e.target.value);
+
+  function deleteAllResetClasses(){
+    if(role !== 'teacher' || teacherView !== 'castle') return;
+    if(!state.classes.length || !state.classes.every(c => c.resetForDeletion)){
+      showToast('Puoi eliminare tutte le classi soltanto dopo averle azzerate dal Castello.');
+      return;
+    }
+    if(lastSyncedClasses === null && supabase && supabaseUser){
+      showToast('Attendi il caricamento e la sincronizzazione delle classi prima di eliminarle.');
+      return;
+    }
+    const count = state.classes.length;
+    if(!confirm('Vuoi eliminare definitivamente TUTTE le classi già azzerate?\n\nSaranno eliminati classi, studenti, Casate, punteggi e storico associato, anche dal database sincronizzato. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.')) return;
+    state.classes = [];
+    state.activeClassId = null;
+    state.className = 'Castello';
+    state.schoolYear = DEFAULT_YEAR;
+    state.students = [];
+    state.nextId = 1;
+    state.nextClassId = 1;
+    teacherView = 'castle';
+    publicClassId = ALL_ACTIVE_CLASSES;
+    selectedHouse = null;
+    resetPointsSelection = true;
+    $('houseStudentsPanel').style.display = 'none';
+    $('classCard').style.display = 'none';
+    $('pointsCard').style.display = 'none';
+    $('manageBtn').classList.remove('primary');
+    $('pointsBtn').classList.remove('primary');
+    $('gradeInput').value = '';
+    save();
+    render();
+    showToast(count === 1 ? 'Classe eliminata. Il Castello è vuoto.' : 'Tutte le classi azzerate sono state eliminate. Il Castello è vuoto.');
+  }
 
   function deleteArchivedClass(){
     const target = activeClass();
