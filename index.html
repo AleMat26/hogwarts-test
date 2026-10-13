@@ -855,6 +855,7 @@ input, select, .authbox input {
 .btn.danger:hover { background: linear-gradient(135deg, rgba(161,59,59,.98), rgba(112,43,47,.98)); }
 .class-status { vertical-align: middle; }
 #activeClassSummary .btn { margin: 6px 0; vertical-align: middle; }
+#activeClassSummary #deleteAllResetClassesBtn { margin: 0 0 0 8px; padding: 5px 8px; font-size: 11px; line-height: 1.2; vertical-align: middle; }
 
 /* Selettore pubblico: resta separato dalla classe scelta nel pannello docente. */
 .public-class-picker {
@@ -1376,7 +1377,7 @@ input, select, .authbox input {
     if(role === 'teacher' && teacherView === 'castle') {
       const activeCount = state.classes.filter(cl => !cl.archived).length;
       const allClassesReset = state.classes.length > 0 && state.classes.every(cl => cl.resetForDeletion);
-      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span><br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>${allClassesReset ? ' <button type="button" class="btn small danger" id="deleteAllResetClassesBtn">🗑️ Elimina tutte le classi azzerate</button>' : ''}`;
+      $('activeClassSummary').innerHTML = `<strong>🏰 Castello</strong> <span class="class-status">Riepilogo cumulativo</span>${allClassesReset ? ' <button type="button" class="btn small danger" id="deleteAllResetClassesBtn">🗑️ Elimina tutte le classi azzerate</button>' : ''}<br><span style="font-size:13px">${activeCount} classi attive · ${state.classes.length} classi totali</span>`;
     } else if(c) {
       $('activeClassSummary').innerHTML = `<strong>${esc(c.name)}</strong> · Anno scolastico ${esc(c.schoolYear)} <span class="class-status">${c.archived ? 'Sola consultazione' : 'Classe attiva'}</span>${canDeleteClass ? ` <button type="button" class="btn small danger" id="deleteArchivedClassBtn" title="${deleteTitle}">${deleteLabel}</button>` : ''}<br><span style="font-size:13px">${c.students.length} studenti · ${c.students.filter(st => st.house).length} smistati</span>`;
     } else {
