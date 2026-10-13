@@ -311,6 +311,10 @@ main {
   z-index: 5;
 }
 .modal.open { display: flex; }
+  #newClassNameInput::placeholder {
+  font-style: italic;
+  color: #aaa;
+}
 .dialog {
   max-width: 560px;
   width: 100%;
@@ -999,6 +1003,28 @@ input, select, .authbox input {
   <footer>Pagina Hogwarts · prototipo interattivo per uso didattico</footer>
 </main>
 
+<!-- MODALE NUOVA CLASSE -->
+<div class="modal" id="newClassNameModal">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="newClassNameTitle">
+    <h2 id="newClassNameTitle">Nuova classe</h2>
+    <form id="newClassNameForm">
+      <label for="newClassNameInput">Nome della classe</label>
+      <input
+        type="text"
+        id="newClassNameInput"
+        placeholder="es. I H"
+        autocomplete="off"
+        required
+        style="width:100%;box-sizing:border-box;margin:12px 0 20px"
+      >
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" class="btn" id="cancelNewClass">Annulla</button>
+        <button type="submit" class="btn primary">Continua</button>
+      </div>
+    </form>
+  </div>
+</div>
+  
 <!-- MODALE CAPPELLO PARLANTE -->
 <div class="modal" id="modal">
   <div class="dialog">
@@ -2103,58 +2129,96 @@ input, select, .authbox input {
   }
 
   
-  $('newClassBtn').onclick = () => {
-    const name = prompt('Nome della nuova classe (es. I H):', '');
-    if (name === null) return;
+ function askNewClassName() {
+  return new Promise(resolve => {
+    const modal = $('newClassNameModal');
+    const form = $('newClassNameForm');
+    const input = $('newClassNameInput');
+    const cancel = $('cancelNewClass');
 
-    const cleanName = name.trim();
-    if (!cleanName) {
-      alert('Inserisci il nome della classe.');
-      return;
+    input.value = '';
+    modal.classList.add('open');
+    input.focus();
+
+    function finish(value) {
+      modal.classList.remove('open');
+      form.removeEventListener('submit', onSubmit);
+      cancel.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      resolve(value);
     }
 
-    const now = new Date();
-    const calendarYear = now.getFullYear();
-    const firstYear = now.getMonth() >= 8
-      ? calendarYear
-      : calendarYear - 1;
-    const suggestedYear = firstYear + '–' + (firstYear + 1);
-
-    const year = prompt(
-      'Anno scolastico (es. 2026–2027):',
-      suggestedYear
-    );
-    if (year === null) return;
-
-    const cleanYear = year.trim();
-    if (!cleanYear) {
-      alert('Inserisci l’anno scolastico.');
-      return;
+    function onSubmit(event) {
+      event.preventDefault();
+      if (!input.value.trim()) {
+        input.focus();
+        return;
+      }
+      finish(input.value);
     }
 
-    if (state.classes.some(c =>
-      c.name.toLocaleLowerCase('it') === cleanName.toLocaleLowerCase('it') &&
-      c.schoolYear === cleanYear
-    )) {
-      alert('Esiste già una classe con questo nome nello stesso anno scolastico.');
-      return;
+    function onCancel() {
+      finish(null);
     }
 
-    const id = nextUniqueClassId();
+    function onBackdrop(event) {
+      if (event.target === modal) finish(null);
+    }
 
-    state.classes.push({
-      id,
-      clientId: id,
-      name: cleanName,
-      schoolYear: cleanYear,
-      students: [],
-      nextId: 1,
-      archived: false,
-      resetForDeletion: false
-    });
+    form.addEventListener('submit', onSubmit);
+    cancel.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+  });
+}
 
-    switchClass(id);
-  };
+$('newClassBtn').onclick = async () => {
+  const name = await askNewClassName();
+  if (name === null) return;
+
+  const cleanName = name.trim();
+
+  const now = new Date();
+  const calendarYear = now.getFullYear();
+  const firstYear = now.getMonth() >= 8
+    ? calendarYear
+    : calendarYear - 1;
+  const suggestedYear = firstYear + '–' + (firstYear + 1);
+
+  const year = prompt(
+    'Anno scolastico:',
+    state.schoolYear || suggestedYear
+  );
+  if (year === null) return;
+
+  const cleanYear = year.trim();
+  if (!cleanYear) {
+    alert('Inserisci l’anno scolastico.');
+    return;
+  }
+
+  if (state.classes.some(c =>
+    c.name.toLocaleLowerCase('it') === cleanName.toLocaleLowerCase('it') &&
+    c.schoolYear === cleanYear
+  )) {
+    alert('Esiste già una classe con questo nome nello stesso anno scolastico.');
+    return;
+  }
+
+  const id = nextUniqueClassId();
+
+  state.classes.push({
+    id,
+    clientId: id,
+    name: cleanName,
+    schoolYear: cleanYear,
+    students: [],
+    nextId: 1,
+    archived: false,
+    resetForDeletion: false
+  });
+
+  switchClass(id);
+};
 
   $('promoteClassBtn').onclick = () => {
     if(activeIsArchived()){ alert('Seleziona una classe attiva da promuovere.'); return; }
