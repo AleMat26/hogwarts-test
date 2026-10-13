@@ -1557,7 +1557,7 @@ if (inCastle) {
     const targetId = String(st.id);
     if([...studentSelect.options].some(option => option.value === targetId)) studentSelect.value = targetId;
     history();
-    $('gradeInput').focus({ preventScroll: true });
+    if(!activeIsArchived()) $('gradeInput').focus({ preventScroll: true });
   }
 
   // Riporta le ricerche della gestione studenti allo stato iniziale.
@@ -1582,8 +1582,9 @@ if (inCastle) {
       const houseMatch = filter === 'all' || (filter === 'unassigned' ? !st.house : st.house === filter);
       return nameMatch && houseMatch;
     }).slice().sort((a,b) => a.name.localeCompare(b.name, 'it'));
+    const archivedClass = activeIsArchived();
     $('classList').innerHTML = visible.map(st =>
-      `<div class="row">
+      `<div class="row" ${archivedClass ? `data-history-student="${esc(st.id)}" style="cursor:pointer" title="Consulta lo storico dello studente"` : ''}>
         <b>${esc(st.name)}</b>
         <span class="${st.house ? '' : 'unassigned'}" style="padding:6px 10px;border-radius:8px;border:1px solid #5f5236;background:#0f1118;">${st.house ? houses[st.house] : '🎩 Da smistare'}</span>
         <span>${formatPoints(st.points || 0)} pt</span>
@@ -1591,9 +1592,9 @@ if (inCastle) {
       </div>`
     ).join('') || '<div class="house-students-empty">Nessuno studente corrisponde ai filtri.</div>';
 
-    $('pointsStudent').innerHTML = state.students.filter(st => st.house)
+    $('pointsStudent').innerHTML = state.students.filter(st => archivedClass || st.house)
       .slice().sort((a,b) => a.name.localeCompare(b.name, 'it'))
-      .map(st => `<option value="${esc(st.id)}">${esc(st.name)} — ${houses[st.house]}</option>`).join('');
+      .map(st => `<option value="${esc(st.id)}">${esc(st.name)}${st.house ? ' — ' + houses[st.house] : ' — 🎩 Da smistare'}</option>`).join('');
     if (previouslySelected && [...$('pointsStudent').options].some(o => o.value === previouslySelected)) {
       $('pointsStudent').value = previouslySelected;
     } else if ($('pointsStudent').options.length) {
@@ -1608,7 +1609,8 @@ if (inCastle) {
     $('reviewHousesBtn').disabled = readOnly || !state.students.length;
     $('studentName').disabled = readOnly;
     $('addStudent').disabled = readOnly;
-    $('pointsStudent').disabled = readOnly;
+    // In archivio il menu resta consultabile per cambiare studente e leggere lo storico.
+    $('pointsStudent').disabled = false;
     $('gradeInput').disabled = readOnly;
     $('saveGrade').disabled = readOnly;
     const selectedPointsStudent = state.students.find(st => String(st.id) === String($('pointsStudent').value) && !!st.house);
@@ -2537,7 +2539,15 @@ $('promoteClassBtn').onclick = () => {
   };
 
   $('classList').onclick = e => {
-    if(activeIsArchived()){ showToast('Questa classe è in archivio e non può essere modificata.'); return; }
+    if(activeIsArchived()){
+      const archivedStudent = e.target.closest('[data-history-student]');
+      if(archivedStudent){
+        e.preventDefault();
+        e.stopPropagation();
+        openStudentPoints(archivedStudent.dataset.historyStudent);
+      }
+      return;
+    }
     const edit = e.target.closest('[data-edit]');
     const assignPoints = e.target.closest('[data-assign-points]');
     const commend = e.target.closest('[data-commend]');
@@ -2573,7 +2583,7 @@ $('promoteClassBtn').onclick = () => {
       }
       history();
       $('pointsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      $('gradeInput').focus({ preventScroll: true });
+      if(!activeIsArchived()) $('gradeInput').focus({ preventScroll: true });
     } else if(edit){
       // Il render() ricrea la lista e rimuove il pulsante cliccato dal DOM.
       // Fermiamo la propagazione prima del render, altrimenti il gestore globale
@@ -3101,7 +3111,7 @@ $('reviewHousesBtn').onclick = () => {
 
   $('pointsStudent').onchange = () => {
     history();
-    if(role === 'teacher' && teacherView === 'class' && $('pointsCard').style.display !== 'none') $('gradeInput').focus({ preventScroll: true });
+    if(role === 'teacher' && teacherView === 'class' && $('pointsCard').style.display !== 'none' && !activeIsArchived()) $('gradeInput').focus({ preventScroll: true });
   };
 
   $('gradeInput').oninput = () => {
