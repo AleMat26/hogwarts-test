@@ -2296,56 +2296,7 @@ $('newClassBtn').onclick = async () => {
 };
 
 
-$('newClassBtn').onclick = async () => {
-  const name = await askNewClassName();
-  if (name === null) return;
-
-  const cleanName = name.trim();
-
-  const now = new Date();
-  const calendarYear = now.getFullYear();
-  const firstYear = now.getMonth() >= 8
-    ? calendarYear
-    : calendarYear - 1;
-  const suggestedYear = firstYear + '–' + (firstYear + 1);
-
-  const year = prompt(
-    'Anno scolastico:',
-    state.schoolYear || suggestedYear
-  );
-  if (year === null) return;
-
-  const cleanYear = year.trim();
-  if (!cleanYear) {
-    alert('Inserisci l’anno scolastico.');
-    return;
-  }
-
-  if (state.classes.some(c =>
-    c.name.toLocaleLowerCase('it') === cleanName.toLocaleLowerCase('it') &&
-    c.schoolYear === cleanYear
-  )) {
-    alert('Esiste già una classe con questo nome nello stesso anno scolastico.');
-    return;
-  }
-
-  const id = nextUniqueClassId();
-
-  state.classes.push({
-    id,
-    clientId: id,
-    name: cleanName,
-    schoolYear: cleanYear,
-    students: [],
-    nextId: 1,
-    archived: false,
-    resetForDeletion: false
-  });
-
-  switchClass(id);
-};
-
-  $('promoteClassBtn').onclick = () => {
+$('promoteClassBtn').onclick = () => {
     if(activeIsArchived()){ alert('Seleziona una classe attiva da promuovere.'); return; }
     const current = activeClass();
     if(isFinalYearClass(current.name)){
