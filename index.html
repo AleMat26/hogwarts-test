@@ -1587,7 +1587,7 @@ if (inCastle) {
         <b>${esc(st.name)}</b>
         <span class="${st.house ? '' : 'unassigned'}" style="padding:6px 10px;border-radius:8px;border:1px solid #5f5236;background:#0f1118;">${st.house ? houses[st.house] : '🎩 Da smistare'}</span>
         <span>${formatPoints(st.points || 0)} pt</span>
-        <div class="student-actions"><button type="button" class="btn small" data-edit="${esc(st.id)}">✎ Rinomina</button>${st.house ? `<button type="button" class="btn small" data-assign-points="${esc(st.id)}">🏆 Punti</button>` : ''}<button type="button" class="btn small commend" data-commend="${esc(st.id)}" ${st.house ? '' : 'disabled title="Disponibile dopo lo smistamento"'}>✨ Bonus +1</button><button type="button" class="btn small" data-malus="${esc(st.id)}" ${st.house ? '' : 'disabled title="Disponibile dopo lo smistamento"'}>⚖️ Malus −1</button><button type="button" class="btn small remove" data-id="${esc(st.id)}">🗑 Rimuovi</button></div>
+        <div class="student-actions"><button type="button" class="btn small" data-edit="${esc(st.id)}">✎ Rinomina</button>${st.house ? `<button type="button" class="btn small" data-assign-points="${esc(st.id)}">🏆 Punti</button><button type="button" class="btn small commend" data-commend="${esc(st.id)}">✨ Bonus +1</button><button type="button" class="btn small" data-malus="${esc(st.id)}">⚖️ Malus −1</button>` : ''}<button type="button" class="btn small remove" data-id="${esc(st.id)}">🗑 Rimuovi</button></div>
       </div>`
     ).join('') || '<div class="house-students-empty">Nessuno studente corrisponde ai filtri.</div>';
 
