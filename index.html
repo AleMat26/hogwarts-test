@@ -2159,16 +2159,22 @@ function askNewClassName() {
     const cancel = $('cancelNewClass');
 
     input.value = '';
-    modal.classList.add('open');
-    input.focus();
+modal.style.display = '';
+modal.classList.add('open');
+input.focus();
 
-    function finish(value) {
-      modal.classList.remove('open');
-      form.removeEventListener('submit', onSubmit);
-      cancel.removeEventListener('click', onCancel);
-      modal.removeEventListener('click', onBackdrop);
-      resolve(value);
-    }
+    
+function finish(value) {
+  modal.classList.remove('open');
+  modal.style.display = 'none';
+
+  form.removeEventListener('submit', onSubmit);
+  cancel.removeEventListener('click', onCancel);
+  modal.removeEventListener('click', onBackdrop);
+
+  resolve(value);
+}
+
 
     function onSubmit(event) {
       event.preventDefault();
