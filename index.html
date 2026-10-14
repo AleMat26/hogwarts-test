@@ -1406,7 +1406,10 @@ input, select, .authbox input {
     const actions = document.querySelector('.house-cup-archive-actions');
     if(!list || !status || !recordBtn) return;
     const inCastle = role === 'teacher' && teacherView === 'castle';
-    const c = inCastle ? null : activeClass();
+    // Non usare activeClass() qui: in caso di ID numerico/stringa non coincidente
+    // può ricadere sulla prima classe e mostrare la sua Coppa nelle altre classi.
+    // Per l'Albo d'oro bisogna identificare in modo esatto la classe selezionata.
+    const c = inCastle ? null : (state.classes.find(item => String(item.id) === String(state.activeClassId)) || null);
     const existing = c && houseCupArchiveLoaded ? houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear)) : null;
     const canRecord = Boolean(role === 'teacher' && teacherView === 'class' && c && !c.resetForDeletion && c.students.length && c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)));
     if(actions) actions.style.display = inCastle ? 'none' : 'flex';
