@@ -912,10 +912,11 @@ input, select, .authbox input {
 .house-cup-record-title { margin:0; color:var(--gold); font-size:1.08rem; }
 .house-cup-record-meta { color:var(--muted); font:13px/1.45 system-ui,sans-serif; margin-top:4px; }
 .house-cup-record-winner { border:1px solid rgba(226,194,122,.45); border-radius:999px; padding:5px 9px; color:var(--gold); font:600 12px system-ui,sans-serif; }
-.house-cup-record-scores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-.house-cup-record-score { display:flex; align-items:center; justify-content:space-between; gap:7px; min-width:0; border-radius:10px; padding:7px 9px; background:rgba(255,255,255,.045); font:12px/1.3 system-ui,sans-serif; }
-.house-cup-record-score span { white-space:nowrap; }
-.house-cup-record-score strong { display:block; flex:0 0 auto; margin:0; color:#fff; font-size:14px; white-space:nowrap; }
+.house-cup-record-scores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+/* Box Casata compatte: nome e punteggio sempre sulla stessa riga. */
+.house-cup-record-score { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:5px; min-width:0; border-radius:9px; padding:4px 7px; background:rgba(255,255,255,.045); font:11px/1.15 system-ui,sans-serif; }
+.house-cup-record-score span { display:block; min-width:0; white-space:nowrap; }
+.house-cup-record-score strong { display:block; flex:0 0 auto; margin:0; color:#fff; font-size:12px; line-height:1.15; white-space:nowrap; }
 /* Colori di sfondo espliciti per ogni Casata nell'Albo d'oro.
    !important evita che gli stili generici delle card sovrascrivano i colori. */
 #houseCupArchivePanel .house-cup-record-score.house-score-g { background: rgba(164,43,53,.24) !important; border: 1px solid rgba(190,70,78,.42) !important; }
@@ -928,7 +929,7 @@ input, select, .authbox input {
 #houseCupArchivePanel .house-cup-record-score.house-score-s strong { color: #a5e0b4 !important; }
 .house-cup-archive-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 16px; }
 .house-cup-archive-note { color:var(--muted); font:13px/1.5 system-ui,sans-serif; }
-@media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; } .house-cup-record-score { padding:4px 6px; font-size:10px; gap:4px; } .house-cup-record-score strong { font-size:11px; } }
 
 .house-student-clickable { cursor: pointer; }
 .house-student-clickable:hover, .house-student-clickable:focus-visible { outline: 1px solid var(--gold); background: rgba(226,194,122,.09); }
