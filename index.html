@@ -1435,6 +1435,7 @@ input, select, .authbox input {
   // Segna la Coppa come da aggiornare ogni volta che cambia il punteggio di
   // una Casata. Il confronto dei totali resta utile anche dopo un ricaricamento.
   const houseCupDirtyKeys = new Set();
+  const houseCupLastAction = new Map();
   function houseCupKey(c){
     return c ? normalizeArchiveKey(c.name) + '|' + normalizeArchiveKey(c.schoolYear) : '';
   }
@@ -1449,6 +1450,7 @@ input, select, .authbox input {
     const status = $('houseCupArchiveStatus');
     const currentLabel = $('houseCupArchiveCurrentClass');
     const recordBtn = $('recordHouseCupBtn');
+    const archiveTrigger = $('houseCupArchiveBtn');
     const actions = document.querySelector('.house-cup-archive-actions');
     if(!list || !status || !recordBtn) return;
     const inCastle = role === 'teacher' && teacherView === 'castle';
@@ -1465,6 +1467,26 @@ input, select, .authbox input {
       Number(existing.slytherin_points || 0) === Number(currentTotals.s || 0));
     const cupWasChanged = Boolean(c && houseCupDirtyKeys.has(houseCupKey(c)));
     const canRecord = Boolean(role === 'teacher' && teacherView === 'class' && c && !c.resetForDeletion && c.students.length && c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)));
+    if(archiveTrigger){
+      if(inCastle){
+        archiveTrigger.textContent = '🏆 Albo d’oro';
+        archiveTrigger.disabled = false;
+        archiveTrigger.title = 'Apri l’Albo d’oro completo delle classi.';
+      } else {
+        const key = c ? houseCupKey(c) : '';
+        const registeredAndClean = Boolean(existing && !cupWasChanged);
+        archiveTrigger.textContent = existing
+          ? (cupWasChanged ? '↻ Aggiorna la classe sull’albo d’oro' : (houseCupLastAction.get(key) === 'updated' ? 'Classe aggiornata nell’albo d’oro' : 'Classe registrata all’albo d’oro'))
+          : '🏆 Albo d’oro';
+        archiveTrigger.disabled = houseCupArchiveBusy || !canRecord || registeredAndClean;
+        archiveTrigger.title = registeredAndClean
+          ? 'La Coppa è già registrata e non ci sono modifiche da salvare.'
+          : !houseCupArchiveLoaded ? 'I dati dell’Albo d’oro verranno verificati prima della registrazione.'
+          : !canRecord ? 'Completa lo smistamento di tutti gli studenti prima di registrare la classe.'
+          : existing ? 'I punteggi sono cambiati: aggiorna la Coppa già registrata.'
+          : 'Registra i punteggi attuali della classe nell’Albo d’oro.';
+      }
+    }
     if(actions) actions.style.display = inCastle ? 'none' : 'flex';
     recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existingMatchesCurrent && !cupWasChanged);
     recordBtn.textContent = existing && (!existingMatchesCurrent || cupWasChanged) ? '↻ Aggiorna la Coppa della classe selezionata' : '＋ Registra la Coppa della classe selezionata';
@@ -1546,6 +1568,14 @@ input, select, .authbox input {
 
   async function recordHouseCup(){
     if(role !== 'teacher' || teacherView !== 'class' || houseCupArchiveBusy) return;
+    if(!houseCupArchiveLoaded){
+      try { await loadHouseCupArchive(); }
+      catch(error){
+        console.error('Errore caricamento Albo d’oro:', error);
+        showToast('Impossibile verificare l’Albo d’oro. Riprova tra poco.');
+        return;
+      }
+    }
     const c = activeClass();
     if(!c || c.resetForDeletion || !c.students.length){ showToast('Seleziona una classe con studenti e risultati da registrare.'); return; }
     if(!c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house))){ showToast('Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'); return; }
@@ -1596,9 +1626,10 @@ input, select, .authbox input {
         throw error;
       }
       houseCupDirtyKeys.delete(houseCupKey(c));
+      houseCupLastAction.set(houseCupKey(c), existing ? 'updated' : 'registered');
       houseCupArchiveLoaded = false;
       await loadHouseCupArchive();
-      showToast(existing ? 'Coppa aggiornata nell’Albo d’oro.' : 'Coppa registrata nell’Albo d’oro.');
+      showToast(existing ? 'Classe aggiornata nell’Albo d’oro.' : 'Classe registrata nell’Albo d’oro.');
     } catch(error) {
       console.error('Errore registrazione Coppa:', error);
       showToast(error.message && /Esiste già una Coppa/.test(error.message) ? error.message : 'Registrazione non riuscita. Verifica che la tabella e le policy Supabase siano state create correttamente.');
@@ -1729,6 +1760,7 @@ if (inCastle) {
       renderTeacher();
       renderHouseStudents();
       renderClassManager();
+      renderHouseCupArchive();
     } else {
       $('houseStudentsPanel').style.display = 'none';
       document.querySelectorAll('.house').forEach(card => card.classList.remove('selected'));
@@ -2771,7 +2803,11 @@ $('promoteClassBtn').onclick = async () => {
     showToast('Nuovo anno creato: Casate conservate, punteggi azzerati.');
   };
 
-  $('houseCupArchiveBtn').onclick = openHouseCupArchive;
+  $('houseCupArchiveBtn').onclick = () => {
+    if(role !== 'teacher') return;
+    if(teacherView === 'castle') openHouseCupArchive();
+    else recordHouseCup();
+  };
   $('recordHouseCupBtn').onclick = recordHouseCup;
 
   // Vista Castello: riepilogo cumulativo di tutte le classi attive, senza pannelli operativi.
