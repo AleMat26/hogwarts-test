@@ -914,9 +914,9 @@ input, select, .authbox input {
 .house-cup-record-winner { border:1px solid rgba(226,194,122,.45); border-radius:999px; padding:5px 9px; color:var(--gold); font:600 12px system-ui,sans-serif; }
 .house-cup-record-scores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
 /* Box Casata compatte: nome e punteggio sempre sulla stessa riga. */
-.house-cup-record-score { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:5px; min-width:0; border-radius:9px; padding:4px 7px; background:rgba(255,255,255,.045); font:11px/1.15 system-ui,sans-serif; }
+.house-cup-record-score { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:7px; min-width:0; border-radius:9px; padding:7px 8px; background:rgba(255,255,255,.045); font:12px/1.2 system-ui,sans-serif; }
 .house-cup-record-score span { display:block; min-width:0; white-space:nowrap; }
-.house-cup-record-score strong { display:block; flex:0 0 auto; margin:0; color:#fff; font-size:12px; line-height:1.15; white-space:nowrap; }
+.house-cup-record-score strong { display:block; flex:0 0 auto; margin:0; color:#fff; font-size:12px; line-height:1.2; white-space:nowrap; }
 /* Colori di sfondo espliciti per ogni Casata nell'Albo d'oro.
    !important evita che gli stili generici delle card sovrascrivano i colori. */
 #houseCupArchivePanel .house-cup-record-score.house-score-g { background: rgba(164,43,53,.24) !important; border: 1px solid rgba(190,70,78,.42) !important; }
@@ -929,7 +929,7 @@ input, select, .authbox input {
 #houseCupArchivePanel .house-cup-record-score.house-score-s strong { color: #a5e0b4 !important; }
 .house-cup-archive-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 16px; }
 .house-cup-archive-note { color:var(--muted); font:13px/1.5 system-ui,sans-serif; }
-@media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; } .house-cup-record-score { padding:4px 6px; font-size:10px; gap:4px; } .house-cup-record-score strong { font-size:11px; } }
+@media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; } .house-cup-record-score { padding:7px 8px; font-size:12px; gap:6px; } .house-cup-record-score strong { font-size:12px; } }
 
 .house-student-clickable { cursor: pointer; }
 .house-student-clickable:hover, .house-student-clickable:focus-visible { outline: 1px solid var(--gold); background: rgba(226,194,122,.09); }
@@ -1473,18 +1473,15 @@ input, select, .authbox input {
         archiveTrigger.disabled = false;
         archiveTrigger.title = 'Apri l’Albo d’oro completo delle classi.';
       } else {
-        const key = c ? houseCupKey(c) : '';
         const registeredAndClean = Boolean(existing && !cupWasChanged);
-        archiveTrigger.textContent = existing
-          ? (cupWasChanged ? '↻ Aggiorna la classe sull’albo d’oro' : (houseCupLastAction.get(key) === 'updated' ? 'Classe aggiornata nell’albo d’oro' : 'Classe registrata all’albo d’oro'))
-          : '🏆 Albo d’oro';
+        archiveTrigger.textContent = existing && cupWasChanged ? 'Aggiorna l’iscrizione' : '🏆 Albo d’oro';
         archiveTrigger.disabled = houseCupArchiveBusy || !canRecord || registeredAndClean;
         archiveTrigger.title = registeredAndClean
-          ? 'La Coppa è già registrata e non ci sono modifiche da salvare.'
+          ? 'La classe è già iscritta e non ci sono modifiche da salvare.'
           : !houseCupArchiveLoaded ? 'I dati dell’Albo d’oro verranno verificati prima della registrazione.'
           : !canRecord ? 'Completa lo smistamento di tutti gli studenti prima di registrare la classe.'
-          : existing ? 'I punteggi sono cambiati: aggiorna la Coppa già registrata.'
-          : 'Registra i punteggi attuali della classe nell’Albo d’oro.';
+          : existing ? 'I punteggi sono cambiati: aggiorna l’iscrizione all’Albo d’oro.'
+          : 'Iscrivi i punteggi attuali della classe all’Albo d’oro.';
       }
     }
     if(actions) actions.style.display = inCastle ? 'none' : 'flex';
@@ -1598,7 +1595,7 @@ input, select, .authbox input {
     const winner = winners.length > 1 ? 'EX_AEQUO' : winners[0];
     const winnerDescription = winners.length > 1 ? winners.join(', ') + ' (ex aequo)' : winners[0];
     const detail = `Classe: ${c.name} · ${c.schoolYear}\n\nGrifondoro: ${pointLabel(totalsByHouse.g)}\nTassorosso: ${pointLabel(totalsByHouse.t)}\nCorvonero: ${pointLabel(totalsByHouse.r)}\nSerpeverde: ${pointLabel(totalsByHouse.s)}\n\nVincitrice: ${winnerDescription}\n\n${existing ? 'La Coppa già registrata verrà aggiornata con questi risultati.' : 'Questa fotografia resterà nell’Albo d’oro anche se la classe verrà successivamente azzerata o eliminata.'}`;
-    if(!confirm((existing ? 'Vuoi aggiornare la Coppa già registrata nell’Albo d’oro?' : 'Vuoi registrare questa Coppa nell’Albo d’oro?') + '\n\n' + detail)) return;
+    if(!confirm((existing ? 'Vuoi aggiornare l’iscrizione all’Albo d’oro con questi dati?' : 'Vuoi iscrivere la classe all’Albo d’oro con questi dati?') + '\n\n' + detail)) return;
     houseCupArchiveBusy = true;
     renderHouseCupArchive();
     try {
@@ -1629,7 +1626,7 @@ input, select, .authbox input {
       houseCupLastAction.set(houseCupKey(c), existing ? 'updated' : 'registered');
       houseCupArchiveLoaded = false;
       await loadHouseCupArchive();
-      showToast(existing ? 'Classe aggiornata nell’Albo d’oro.' : 'Classe registrata nell’Albo d’oro.');
+      showToast(existing ? 'Punteggi aggiornati nell’Albo d’oro.' : 'Classe iscritta all’Albo d’oro.');
     } catch(error) {
       console.error('Errore registrazione Coppa:', error);
       showToast(error.message && /Esiste già una Coppa/.test(error.message) ? error.message : 'Registrazione non riuscita. Verifica che la tabella e le policy Supabase siano state create correttamente.');
