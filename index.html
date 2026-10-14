@@ -1229,6 +1229,28 @@ input, select, .authbox input {
     if(nameOrder) return nameOrder;
     return String(a.schoolYear || '').localeCompare(String(b.schoolYear || ''),'it');
   }
+  function compareArchiveSchoolYears(a,b){
+    const yearA = String(a || '').match(/(\d{4})\D+(\d{4})/);
+    const yearB = String(b || '').match(/(\d{4})\D+(\d{4})/);
+    if(yearA && yearB){
+      const startOrder = Number(yearA[1]) - Number(yearB[1]);
+      if(startOrder) return startOrder;
+      const endOrder = Number(yearA[2]) - Number(yearB[2]);
+      if(endOrder) return endOrder;
+    } else if(yearA || yearB){
+      return yearA ? -1 : 1;
+    }
+    return String(a || '').localeCompare(String(b || ''),'it',{numeric:true,sensitivity:'base'});
+  }
+  function compareHouseCupRecords(a,b){
+    const yearOrder = compareArchiveSchoolYears(a.school_year,b.school_year);
+    if(yearOrder) return yearOrder;
+    const sectionOrder = classSection(a.class_name).localeCompare(classSection(b.class_name),'it',{sensitivity:'base'});
+    if(sectionOrder) return sectionOrder;
+    const gradeOrder = classGrade(a.class_name) - classGrade(b.class_name);
+    if(gradeOrder) return gradeOrder;
+    return String(a.class_name || '').localeCompare(String(b.class_name || ''),'it',{numeric:true,sensitivity:'base'});
+  }
   function isFinalYearClass(name){ return classGrade(name) === 5; }
   function nextClassName(name){
     const match = String(name || '').trim().match(/^([IVXLCDM]+)(\s+.*)$/i);
@@ -1425,11 +1447,11 @@ input, select, .authbox input {
     // Nel contesto di una classe si mostra esclusivamente la Coppa di quella
     // specifica classe e anno scolastico. Il Castello, che non è una classe,
     // mantiene invece la vista complessiva dell'Albo d'oro.
-    const visibleRecords = inCastle
+    const visibleRecords = (inCastle
       ? houseCupArchiveRecords
       : c
         ? houseCupArchiveRecords.filter(record => normalizeArchiveKey(record.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(record.school_year) === normalizeArchiveKey(c.schoolYear))
-        : [];
+        : []).slice().sort(compareHouseCupRecords);
     if(!houseCupArchiveLoaded && !houseCupArchiveBusy){ status.textContent = 'Apri l’Albo d’oro per caricare le Coppe salvate.'; }
     else if(houseCupArchiveBusy){ status.textContent = 'Operazione in corso…'; }
     else if(inCastle){ status.textContent = visibleRecords.length ? 'Coppe registrate: ' + visibleRecords.length : 'Non è ancora stata registrata nessuna Coppa.'; }
