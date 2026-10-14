@@ -904,6 +904,21 @@ input, select, .authbox input {
 #castleStudentSearchInput::placeholder { opacity: 1; }
 
 
+
+#houseCupArchivePanel { margin-top: 18px; }
+.house-cup-archive-list { display: grid; gap: 12px; }
+.house-cup-record { border: 1px solid rgba(226,194,122,.24); border-radius: 14px; padding: 15px; background: rgba(10,13,20,.38); }
+.house-cup-record-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.house-cup-record-title { margin:0; color:var(--gold); font-size:1.08rem; }
+.house-cup-record-meta { color:var(--muted); font:13px/1.45 system-ui,sans-serif; margin-top:4px; }
+.house-cup-record-winner { border:1px solid rgba(226,194,122,.45); border-radius:999px; padding:5px 9px; color:var(--gold); font:600 12px system-ui,sans-serif; }
+.house-cup-record-scores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.house-cup-record-score { border-radius:10px; padding:10px; background:rgba(255,255,255,.045); font:13px/1.4 system-ui,sans-serif; }
+.house-cup-record-score strong { display:block; margin-top:3px; color:#fff; font-size:15px; }
+.house-cup-archive-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 16px; }
+.house-cup-archive-note { color:var(--muted); font:13px/1.5 system-ui,sans-serif; }
+@media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
 .house-student-clickable { cursor: pointer; }
 .house-student-clickable:hover, .house-student-clickable:focus-visible { outline: 1px solid var(--gold); background: rgba(226,194,122,.09); }
 
@@ -960,11 +975,24 @@ input, select, .authbox input {
     <p class="class-manager-note">Ogni classe ha studenti, Casate, punteggi e storico indipendenti. Promuovendo una classe, gli studenti conservano la Casata; la nuova Coppa riparte da zero e la classe precedente resta consultabile in archivio.</p>
   </section>
 
+  <!-- ALBO D'ORO: archivio indipendente delle Coppe concluse -->
+  <section class="card" id="houseCupArchivePanel" style="display:none" aria-live="polite">
+    <h3>🏆 Albo d’oro delle Coppe delle Case</h3>
+    <p class="house-cup-archive-note">Qui vengono conservati i risultati finali registrati manualmente. Le Coppe salvate restano disponibili anche se la classe viene azzerata o eliminata.</p>
+    <div class="house-cup-archive-actions">
+      <button type="button" class="btn primary" id="recordHouseCupBtn">＋ Registra la Coppa della classe selezionata</button>
+      <span class="house-cup-archive-note" id="houseCupArchiveCurrentClass"></span>
+    </div>
+    <div class="house-cup-archive-note" id="houseCupArchiveStatus">Caricamento Albo d’oro…</div>
+    <div class="house-cup-archive-list" id="houseCupArchiveList"></div>
+  </section>
+
   <!-- STRUMENTI DOCENTE: restano nella parte alta della pagina -->
   <div class="controls teacher-controls" id="teacherControls" style="display:none">
     <div class="controls-row">
       <button type="button" class="btn primary" id="sortBtn">🎩 Cappello Parlante</button>
       <button type="button" class="btn" id="reviewHousesBtn">📜 Le quattro Casate</button>
+      <button type="button" class="btn" id="houseCupArchiveBtn">🏆 Albo d’oro</button>
       <button type="button" class="btn" id="castleViewBtn">🏰 Visualizza Castello</button>
       <button type="button" class="btn" id="logoutBtn">🚪 Esci</button>
     </div>
@@ -1139,7 +1167,7 @@ input, select, .authbox input {
   let publicScores = null;
   // La homepage non mostra classi locali finché Supabase non ha risposto.
   let publicDataStatus = 'loading'; // 'loading', 'loaded', 'error'
-  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId_test';  
+  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId';
   const ALL_ACTIVE_CLASSES = '__all_active_classes__';
   const $ = id => document.getElementById(id);
   let toastTimer = null;
@@ -1159,6 +1187,9 @@ input, select, .authbox input {
   let selectedHouse = null;
   let teacherView = 'class'; // 'class' oppure 'castle'
   let resetPointsSelection = true;
+  let houseCupArchiveRecords = [];
+  let houseCupArchiveLoaded = false;
+  let houseCupArchiveBusy = false;
 
   const DEFAULT_YEAR = '2026–2027';
   const romanValues = { I:1, V:5, X:10, L:50, C:100, D:500, M:1000 };
@@ -1361,6 +1392,127 @@ input, select, .authbox input {
       if(s.house) t[s.house] += s.points || 0;
     });
     return t;
+  }
+
+  function normalizeArchiveKey(value){
+    return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('it').replace(/[–—−]/g, '-');
+  }
+
+  function renderHouseCupArchive(){
+    const list = $('houseCupArchiveList');
+    const status = $('houseCupArchiveStatus');
+    const currentLabel = $('houseCupArchiveCurrentClass');
+    const recordBtn = $('recordHouseCupBtn');
+    if(!list || !status || !recordBtn) return;
+    const c = teacherView === 'castle' ? null : activeClass();
+    const canRecord = Boolean(role === 'teacher' && teacherView === 'class' && c && !c.resetForDeletion && c.students.length && c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)));
+    recordBtn.disabled = houseCupArchiveBusy || !canRecord;
+    recordBtn.title = !c ? 'Seleziona una classe prima di registrare la Coppa.'
+      : c.resetForDeletion ? 'La classe è già stata azzerata.'
+      : !c.students.length ? 'La classe non contiene studenti.'
+      : !c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)) ? 'Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'
+      : 'Registra una fotografia dei punteggi finali di questa classe.';
+    currentLabel.textContent = c ? 'Classe selezionata: ' + c.name + ' · ' + c.schoolYear + (c.archived ? ' (archivio)' : '') : 'Nessuna classe selezionata.';
+    if(!houseCupArchiveLoaded && !houseCupArchiveBusy){ status.textContent = 'Apri l’Albo d’oro per caricare le Coppe salvate.'; }
+    else if(houseCupArchiveBusy){ status.textContent = 'Operazione in corso…'; }
+    else { status.textContent = houseCupArchiveRecords.length ? 'Coppe registrate: ' + houseCupArchiveRecords.length : 'Non è ancora stata registrata nessuna Coppa.'; }
+    list.innerHTML = houseCupArchiveRecords.map(record => {
+      const scores = [
+        ['g','Grifondoro',record.gryffindor_points],
+        ['t','Tassorosso',record.hufflepuff_points],
+        ['r','Corvonero',record.ravenclaw_points],
+        ['s','Serpeverde',record.slytherin_points]
+      ];
+      const date = record.recorded_at ? new Date(record.recorded_at).toLocaleDateString('it-IT') : '';
+      return `<article class="house-cup-record">
+        <div class="house-cup-record-head"><div><h4 class="house-cup-record-title">${esc(record.class_name)} · ${esc(record.school_year)}</h4><div class="house-cup-record-meta">Registrata il ${esc(date || '—')}</div></div><span class="house-cup-record-winner">🏆 ${esc(record.winner_house === 'EX_AEQUO' ? 'Vittoria ex aequo' : record.winner_house)}</span></div>
+        <div class="house-cup-record-scores">${scores.map(([key,label,value]) => `<div class="house-cup-record-score">${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label}<strong>${esc(pointLabel(Number(value) || 0))}</strong></div>`).join('')}</div>
+      </article>`;
+    }).join('');
+  }
+
+  async function loadHouseCupArchive(){
+    if(!supabase || !supabaseUser) throw new Error('Devi accedere in modalità docente per consultare l’Albo d’oro.');
+    houseCupArchiveBusy = true;
+    renderHouseCupArchive();
+    try {
+      const { data, error } = await supabase.from('house_cup_archive')
+        .select('id,class_name,school_year,gryffindor_points,hufflepuff_points,ravenclaw_points,slytherin_points,winner_house,recorded_at')
+        .order('recorded_at', { ascending: false });
+      if(error) throw error;
+      houseCupArchiveRecords = data || [];
+      houseCupArchiveLoaded = true;
+      $('houseCupArchiveStatus').textContent = houseCupArchiveRecords.length ? 'Coppe registrate: ' + houseCupArchiveRecords.length : 'Non è ancora stata registrata nessuna Coppa.';
+    } finally {
+      houseCupArchiveBusy = false;
+      renderHouseCupArchive();
+    }
+  }
+
+  async function openHouseCupArchive(){
+    if(role !== 'teacher') return;
+    $('houseCupArchivePanel').style.display = 'block';
+    $('classCard').style.display = 'none';
+    $('pointsCard').style.display = 'none';
+    $('houseStudentsPanel').style.display = 'none';
+    selectedHouse = null;
+    $('manageBtn').classList.remove('primary');
+    $('pointsBtn').classList.remove('primary');
+    document.querySelectorAll('.house').forEach(card => card.classList.remove('selected'));
+    renderHouseCupArchive();
+    try { await loadHouseCupArchive(); }
+    catch(error) {
+      console.error('Errore caricamento Albo d’oro:', error);
+      const message = String(error && error.message || 'Errore sconosciuto');
+      $('houseCupArchiveStatus').textContent = /house_cup_archive|schema cache|does not exist|Could not find the table/i.test(message)
+        ? 'Per attivare l’Albo d’oro, esegui in Supabase lo script SQL fornito insieme al file index.html, poi riapri questa sezione.'
+        : 'Impossibile caricare l’Albo d’oro: verifica la connessione e i permessi Supabase.';
+    }
+  }
+
+  async function recordHouseCup(){
+    if(role !== 'teacher' || teacherView !== 'class' || houseCupArchiveBusy) return;
+    const c = activeClass();
+    if(!c || c.resetForDeletion || !c.students.length){ showToast('Seleziona una classe con studenti e risultati da registrare.'); return; }
+    if(!c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house))){ showToast('Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'); return; }
+    if(!supabase || !supabaseUser){ showToast('Accedi in modalità docente per registrare una Coppa.'); return; }
+    const existing = houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear));
+    if(existing){ showToast('Questa classe ha già una Coppa registrata per questo anno scolastico.'); return; }
+    const totalsByHouse = totals(c.students);
+    const maxScore = Math.max(...Object.values(totalsByHouse));
+    const winners = Object.entries(totalsByHouse).filter(([,value]) => value === maxScore).map(([key]) => houses[key]);
+    const winner = winners.length > 1 ? 'EX_AEQUO' : winners[0];
+    const winnerDescription = winners.length > 1 ? winners.join(', ') + ' (ex aequo)' : winners[0];
+    const detail = `Classe: ${c.name} · ${c.schoolYear}\n\nGrifondoro: ${pointLabel(totalsByHouse.g)}\nTassorosso: ${pointLabel(totalsByHouse.t)}\nCorvonero: ${pointLabel(totalsByHouse.r)}\nSerpeverde: ${pointLabel(totalsByHouse.s)}\n\nVincitrice: ${winnerDescription}\n\nQuesta fotografia resterà nell’Albo d’oro anche se la classe verrà successivamente azzerata o eliminata.`;
+    if(!confirm('Vuoi registrare questa Coppa nell’Albo d’oro?\n\n' + detail)) return;
+    houseCupArchiveBusy = true;
+    renderHouseCupArchive();
+    try {
+      const payload = {
+        teacher_id: supabaseUser.id,
+        class_name: c.name,
+        school_year: c.schoolYear,
+        gryffindor_points: totalsByHouse.g,
+        hufflepuff_points: totalsByHouse.t,
+        ravenclaw_points: totalsByHouse.r,
+        slytherin_points: totalsByHouse.s,
+        winner_house: winner
+      };
+      const { error } = await supabase.from('house_cup_archive').insert(payload);
+      if(error) {
+        if(error.code === '23505') throw new Error('Esiste già una Coppa registrata per questa classe e questo anno scolastico.');
+        throw error;
+      }
+      houseCupArchiveLoaded = false;
+      await loadHouseCupArchive();
+      showToast('Coppa registrata nell’Albo d’oro.');
+    } catch(error) {
+      console.error('Errore registrazione Coppa:', error);
+      showToast(error.message && /Esiste già una Coppa/.test(error.message) ? error.message : 'Registrazione non riuscita. Verifica che la tabella e le policy Supabase siano state create correttamente.');
+    } finally {
+      houseCupArchiveBusy = false;
+      renderHouseCupArchive();
+    }
   }
 
   function renderClassManager(){
@@ -1697,6 +1849,7 @@ if (inCastle) {
     $('publicClassPicker').style.display = isTeacher ? 'none' : 'block';
     $('classCard').style.display = 'none';
     $('pointsCard').style.display = 'none';
+    $('houseCupArchivePanel').style.display = 'none';
     $('castleClassScores').style.display = 'none';
     $('castleViewBtn').style.display = isTeacher && teacherView === 'class' ? 'inline-block' : 'none';
     $('castleViewBtn').classList.remove('primary');
@@ -2173,6 +2326,7 @@ if (inCastle) {
       return;
     }
     if(role === 'teacher') teacherView = 'class';
+    $('houseCupArchivePanel').style.display = 'none';
     resetPointsSelection = true;
     // Salva la classe precedente solo se esiste davvero una selezione attiva.
     // Quando il Castello è vuoto activeClassId è null: save() userebbe altrimenti
@@ -2516,9 +2670,13 @@ $('promoteClassBtn').onclick = async () => {
     showToast('Nuovo anno creato: Casate conservate, punteggi azzerati.');
   };
 
+  $('houseCupArchiveBtn').onclick = openHouseCupArchive;
+  $('recordHouseCupBtn').onclick = recordHouseCup;
+
   // Vista Castello: riepilogo cumulativo di tutte le classi attive, senza pannelli operativi.
   // Per tornare alla gestione si seleziona una classe dal menu a tendina.
   $('castleViewBtn').onclick = () => {
+    $('houseCupArchivePanel').style.display = 'none';
     teacherView = 'castle';
     resetPointsSelection = true;
     $('gradeInput').value = '';
@@ -2537,6 +2695,7 @@ $('promoteClassBtn').onclick = async () => {
   // La scheda Gestisci studenti si apre e si chiude dal suo pulsante.
   // Ogni chiusura riporta ricerche e filtri alla configurazione iniziale.
   $('manageBtn').onclick = () => {
+    $('houseCupArchivePanel').style.display = 'none';
     const isOpen = $('classCard').style.display !== 'none';
     if(isOpen) {
       $('classCard').style.display = 'none';
@@ -2562,6 +2721,7 @@ $('promoteClassBtn').onclick = async () => {
   };
 
   $('pointsBtn').onclick = () => {
+    $('houseCupArchivePanel').style.display = 'none';
     selectedHouse = null;
     $('houseStudentsPanel').style.display = 'none';
     document.querySelectorAll('.house').forEach(card => card.classList.remove('selected'));
@@ -2758,6 +2918,7 @@ $('promoteClassBtn').onclick = async () => {
   // Mostra la composizione attuale delle quattro Casate senza modificare alcun dato.
 
 $('reviewHousesBtn').onclick = () => {
+    $('houseCupArchivePanel').style.display = 'none';
     // Consenti la consultazione anche in archivio: la modale è di sola lettura.
     if(role !== 'teacher' || (teacherView !== 'class' && !activeIsArchived())) return;
 
