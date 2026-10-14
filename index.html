@@ -915,6 +915,15 @@ input, select, .authbox input {
 .house-cup-record-scores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 .house-cup-record-score { border-radius:10px; padding:10px; background:rgba(255,255,255,.045); font:13px/1.4 system-ui,sans-serif; }
 .house-cup-record-score strong { display:block; margin-top:3px; color:#fff; font-size:15px; }
+/* Le Casate nell'Albo d'oro riprendono la stessa palette dei punteggi nel Castello. */
+.house-cup-record-score.house-score-g { background:rgba(164,43,53,.24); border:1px solid rgba(190,70,78,.42); }
+.house-cup-record-score.house-score-t { background:rgba(202,159,48,.23); border:1px solid rgba(218,181,75,.42); }
+.house-cup-record-score.house-score-r { background:rgba(65,117,178,.25); border:1px solid rgba(89,145,208,.44); }
+.house-cup-record-score.house-score-s { background:rgba(61,132,83,.25); border:1px solid rgba(77,164,104,.44); }
+.house-cup-record-score.house-score-g strong { color:#f0a0a5; }
+.house-cup-record-score.house-score-t strong { color:#f0d47e; }
+.house-cup-record-score.house-score-r strong { color:#a9d0ff; }
+.house-cup-record-score.house-score-s strong { color:#a5e0b4; }
 .house-cup-archive-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 16px; }
 .house-cup-archive-note { color:var(--muted); font:13px/1.5 system-ui,sans-serif; }
 @media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -1488,7 +1497,7 @@ input, select, .authbox input {
       const date = record.recorded_at ? new Date(record.recorded_at).toLocaleDateString('it-IT') : '';
       return `<article class="house-cup-record">
         <div class="house-cup-record-head"><div><h4 class="house-cup-record-title">${esc(record.class_name)} · ${esc(record.school_year)}</h4><div class="house-cup-record-meta">Registrata il ${esc(date || '—')}</div></div><span class="house-cup-record-winner">🏆 ${esc(record.winner_house === 'EX_AEQUO' ? 'Vittoria ex aequo' : record.winner_house)}</span></div>
-        <div class="house-cup-record-scores">${scores.map(([key,label,value]) => `<div class="house-cup-record-score">${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label}<strong>${esc(pointLabel(Number(value) || 0))}</strong></div>`).join('')}</div>
+        <div class="house-cup-record-scores">${scores.map(([key,label,value]) => `<div class="house-cup-record-score house-score-${key}">${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label}<strong>${esc(pointLabel(Number(value) || 0))}</strong></div>`).join('')}</div>
       </article>`;
     }).join('');
   }
