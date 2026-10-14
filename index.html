@@ -1420,6 +1420,18 @@ input, select, .authbox input {
     return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('it').replace(/[–—−]/g, '-');
   }
 
+  // Segna la Coppa come da aggiornare ogni volta che cambia il punteggio di
+  // una Casata. Il confronto dei totali resta utile anche dopo un ricaricamento.
+  const houseCupDirtyKeys = new Set();
+  function houseCupKey(c){
+    return c ? normalizeArchiveKey(c.name) + '|' + normalizeArchiveKey(c.schoolYear) : '';
+  }
+  function markHouseCupDirty(){
+    const c = activeClass();
+    if(c) houseCupDirtyKeys.add(houseCupKey(c));
+    renderHouseCupArchive();
+  }
+
   function renderHouseCupArchive(){
     const list = $('houseCupArchiveList');
     const status = $('houseCupArchiveStatus');
@@ -1439,12 +1451,13 @@ input, select, .authbox input {
       Number(existing.hufflepuff_points || 0) === Number(currentTotals.t || 0) &&
       Number(existing.ravenclaw_points || 0) === Number(currentTotals.r || 0) &&
       Number(existing.slytherin_points || 0) === Number(currentTotals.s || 0));
+    const cupWasChanged = Boolean(c && houseCupDirtyKeys.has(houseCupKey(c)));
     const canRecord = Boolean(role === 'teacher' && teacherView === 'class' && c && !c.resetForDeletion && c.students.length && c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)));
     if(actions) actions.style.display = inCastle ? 'none' : 'flex';
-    recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existingMatchesCurrent);
-    recordBtn.textContent = existing && !existingMatchesCurrent ? '↻ Aggiorna la Coppa della classe selezionata' : '＋ Registra la Coppa della classe selezionata';
-    recordBtn.title = existingMatchesCurrent ? 'La Coppa è già registrata e i punteggi coincidono con quelli attuali.'
-      : existing ? 'I punteggi della classe sono cambiati: puoi aggiornare la Coppa già registrata.'
+    recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existingMatchesCurrent && !cupWasChanged);
+    recordBtn.textContent = existing && (!existingMatchesCurrent || cupWasChanged) ? '↻ Aggiorna la Coppa della classe selezionata' : '＋ Registra la Coppa della classe selezionata';
+    recordBtn.title = existingMatchesCurrent && !cupWasChanged ? 'La Coppa è già registrata e i punteggi coincidono con quelli attuali.'
+      : existing ? 'Il punteggio di una Casata è stato modificato: puoi aggiornare la Coppa già registrata.'
       : !houseCupArchiveLoaded ? 'Attendi il caricamento dell’Albo d’oro.'
       : !c ? 'Seleziona una classe prima di registrare la Coppa.'
       : c.resetForDeletion ? 'La classe è già stata azzerata.'
@@ -1532,7 +1545,8 @@ input, select, .authbox input {
       Number(existing.hufflepuff_points || 0) === Number(totalsByHouse.t || 0) &&
       Number(existing.ravenclaw_points || 0) === Number(totalsByHouse.r || 0) &&
       Number(existing.slytherin_points || 0) === Number(totalsByHouse.s || 0));
-    if(existingMatchesCurrent){
+    const cupWasChanged = houseCupDirtyKeys.has(houseCupKey(c));
+    if(existingMatchesCurrent && !cupWasChanged){
       renderHouseCupArchive();
       showToast('La Coppa è già aggiornata: i punteggi coincidono con quelli attuali.');
       return;
@@ -1569,6 +1583,7 @@ input, select, .authbox input {
         if(error.code === '23505') throw new Error('Esiste già una Coppa registrata per questa classe e questo anno scolastico.');
         throw error;
       }
+      houseCupDirtyKeys.delete(houseCupKey(c));
       houseCupArchiveLoaded = false;
       await loadHouseCupArchive();
       showToast(existing ? 'Coppa aggiornata nell’Albo d’oro.' : 'Coppa registrata nell’Albo d’oro.');
@@ -2842,6 +2857,7 @@ $('promoteClassBtn').onclick = async () => {
     if(!st) return;
     markClassChanged();
     st.points = (Number(st.points) || 0) + 1;
+    markHouseCupDirty();
     st.history = st.history || [];
     st.history.push({ id: Date.now(), date: new Date().toISOString(), grade: 'Encomio speciale', points: 1 });
     resetClassStudentSearch();
@@ -2860,6 +2876,7 @@ $('promoteClassBtn').onclick = async () => {
     if(!st) return;
     markClassChanged();
     st.points = (Number(st.points) || 0) - 1;
+    markHouseCupDirty();
     st.history = st.history || [];
     st.history.push({ id: Date.now(), date: new Date().toISOString(), grade: 'Malus', points: -1 });
     resetClassStudentSearch();
@@ -3482,6 +3499,7 @@ $('reviewHousesBtn').onclick = () => {
     let p = score(v);
     markClassChanged();
     s.points += p;
+    if(p !== 0) markHouseCupDirty();
     s.history.push({ id: Date.now(), date: new Date().toISOString(), grade: v, points: p });
     const studentId = String(s.id);
     $('gradeInput').value = '';
@@ -3513,7 +3531,9 @@ $('reviewHousesBtn').onclick = () => {
         i = s.history.findIndex(h => String(h.id) === b.dataset.id);
     if(i >= 0 && confirm('Rimuovere questo voto?')){
       markClassChanged();
-      s.points -= s.history[i].points;
+      const removedPoints = Number(s.history[i].points) || 0;
+      s.points -= removedPoints;
+      if(removedPoints !== 0) markHouseCupDirty();
       s.history.splice(i, 1);
       save();
       render();
