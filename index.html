@@ -913,14 +913,15 @@ input, select, .authbox input {
 .house-cup-record-meta { color:var(--muted); font:13px/1.45 system-ui,sans-serif; margin-top:4px; }
 .house-cup-record-winner { border:1px solid rgba(226,194,122,.45); border-radius:999px; padding:5px 9px; color:var(--gold); font:600 12px system-ui,sans-serif; }
 .house-cup-record-scores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-.house-cup-record-score { border-radius:10px; padding:10px; background:rgba(255,255,255,.045); font:13px/1.4 system-ui,sans-serif; }
-.house-cup-record-score strong { display:block; margin-top:3px; color:#fff; font-size:15px; }
+.house-cup-record-score { display:flex; align-items:center; justify-content:space-between; gap:7px; min-width:0; border-radius:10px; padding:7px 9px; background:rgba(255,255,255,.045); font:12px/1.3 system-ui,sans-serif; }
+.house-cup-record-score span { white-space:nowrap; }
+.house-cup-record-score strong { display:block; flex:0 0 auto; margin:0; color:#fff; font-size:14px; white-space:nowrap; }
 /* Colori di sfondo espliciti per ogni Casata nell'Albo d'oro.
    !important evita che gli stili generici delle card sovrascrivano i colori. */
-#houseCupArchivePanel .house-cup-record-score.house-score-g { background:rgba(164,43,53,.24); border:1px solid rgba(190,70,78,.42); }
-#houseCupArchivePanel .house-cup-record-score.house-score-t { background:rgba(202,159,48,.23); border:1px solid rgba(218,181,75,.42); }
-#houseCupArchivePanel .house-cup-record-score.house-score-r { background:rgba(65,117,178,.25); border:1px solid rgba(89,145,208,.44); }
-#houseCupArchivePanel .house-cup-record-score.house-score-s { background:rgba(61,132,83,.25); border:1px solid rgba(77,164,104,.44); }
+#houseCupArchivePanel .house-cup-record-score.house-score-g { background: rgba(164,43,53,.24) !important; border: 1px solid rgba(190,70,78,.42) !important; }
+#houseCupArchivePanel .house-cup-record-score.house-score-t { background: rgba(202,159,48,.23) !important; border: 1px solid rgba(218,181,75,.42) !important; }
+#houseCupArchivePanel .house-cup-record-score.house-score-r { background: rgba(65,117,178,.25) !important; border: 1px solid rgba(89,145,208,.44) !important; }
+#houseCupArchivePanel .house-cup-record-score.house-score-s { background: rgba(61,132,83,.25) !important; border: 1px solid rgba(77,164,104,.44) !important; }
 #houseCupArchivePanel .house-cup-record-score.house-score-g strong { color: #f0a0a5 !important; }
 #houseCupArchivePanel .house-cup-record-score.house-score-t strong { color: #f0d47e !important; }
 #houseCupArchivePanel .house-cup-record-score.house-score-r strong { color: #a9d0ff !important; }
@@ -1498,7 +1499,7 @@ input, select, .authbox input {
       const date = record.recorded_at ? new Date(record.recorded_at).toLocaleDateString('it-IT') : '';
       return `<article class="house-cup-record">
         <div class="house-cup-record-head"><div><h4 class="house-cup-record-title">${esc(record.class_name)} · ${esc(record.school_year)}</h4><div class="house-cup-record-meta">Registrata il ${esc(date || '—')}</div></div><span class="house-cup-record-winner">🏆 ${esc(record.winner_house === 'EX_AEQUO' ? 'Vittoria ex aequo' : record.winner_house)}</span></div>
-        <div class="house-cup-record-scores">${scores.map(([key,label,value]) => `<div class="house-cup-record-score house-score-${key}">${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label}<strong>${esc(pointLabel(Number(value) || 0))}</strong></div>`).join('')}</div>
+        <div class="house-cup-record-scores">${scores.map(([key,label,value]) => `<div class="house-cup-record-score house-score-${key}"><span>${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label}</span><strong>${esc(pointLabel(Number(value) || 0))}</strong></div>`).join('')}</div>
       </article>`;
     }).join('');
   }
