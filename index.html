@@ -1167,7 +1167,7 @@ input, select, .authbox input {
   let publicScores = null;
   // La homepage non mostra classi locali finché Supabase non ha risposto.
   let publicDataStatus = 'loading'; // 'loading', 'loaded', 'error'
-  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId_test';
+  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId';
   const ALL_ACTIVE_CLASSES = '__all_active_classes__';
   const $ = id => document.getElementById(id);
   let toastTimer = null;
@@ -1403,11 +1403,17 @@ input, select, .authbox input {
     const status = $('houseCupArchiveStatus');
     const currentLabel = $('houseCupArchiveCurrentClass');
     const recordBtn = $('recordHouseCupBtn');
+    const actions = document.querySelector('.house-cup-archive-actions');
     if(!list || !status || !recordBtn) return;
-    const c = teacherView === 'castle' ? null : activeClass();
+    const inCastle = role === 'teacher' && teacherView === 'castle';
+    const c = inCastle ? null : activeClass();
+    const existing = c && houseCupArchiveLoaded ? houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear)) : null;
     const canRecord = Boolean(role === 'teacher' && teacherView === 'class' && c && !c.resetForDeletion && c.students.length && c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)));
-    recordBtn.disabled = houseCupArchiveBusy || !canRecord;
-    recordBtn.title = !c ? 'Seleziona una classe prima di registrare la Coppa.'
+    if(actions) actions.style.display = inCastle ? 'none' : 'flex';
+    recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existing);
+    recordBtn.title = existing ? 'La Coppa di questa classe e di questo anno scolastico è già registrata.'
+      : !houseCupArchiveLoaded ? 'Attendi il caricamento dell’Albo d’oro.'
+      : !c ? 'Seleziona una classe prima di registrare la Coppa.'
       : c.resetForDeletion ? 'La classe è già stata azzerata.'
       : !c.students.length ? 'La classe non contiene studenti.'
       : !c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)) ? 'Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'
@@ -1477,7 +1483,11 @@ input, select, .authbox input {
     if(!c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house))){ showToast('Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'); return; }
     if(!supabase || !supabaseUser){ showToast('Accedi in modalità docente per registrare una Coppa.'); return; }
     const existing = houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear));
-    if(existing){ showToast('Questa classe ha già una Coppa registrata per questo anno scolastico.'); return; }
+    if(existing){
+      renderHouseCupArchive();
+      showToast('Questa classe ha già una Coppa registrata per questo anno scolastico.');
+      return;
+    }
     const totalsByHouse = totals(c.students);
     const maxScore = Math.max(...Object.values(totalsByHouse));
     const winners = Object.entries(totalsByHouse).filter(([,value]) => value === maxScore).map(([key]) => houses[key]);
@@ -1865,6 +1875,14 @@ if (inCastle) {
   }
 
   // Event Listeners
+  // L'Albo d'oro si chiude cliccando sullo sfondo o su un'altra parte della pagina.
+  // Il pulsante che lo apre è escluso, per evitare che il click di apertura lo richiuda subito.
+  document.addEventListener('click', e => {
+    const archivePanel = $('houseCupArchivePanel');
+    if(!archivePanel || archivePanel.style.display === 'none') return;
+    if(e.target.closest('#houseCupArchivePanel') || e.target.closest('#houseCupArchiveBtn')) return;
+    archivePanel.style.display = 'none';
+  });
   $('castleStudentSearchInput').addEventListener('input', renderCastleStudentSearch);
   // Nel Castello, cliccando fuori dalla ricerca si chiudono i risultati e si svuota il campo.
   // I clic sul campo o sui risultati non vengono intercettati qui, così la ricerca resta usabile.
