@@ -1432,11 +1432,61 @@ input, select, .authbox input {
     // può ricadere sulla prima classe e mostrare la sua Coppa nelle altre classi.
     // Per l'Albo d'oro bisogna identificare in modo esatto la classe selezionata.
     const c = inCastle ? null : (state.classes.find(item => String(item.id) === String(state.activeClassId)) || null);
-    const existing = c && houseCupArchiveLoaded ? houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear)) : null;
-    const canRecord = Boolean(role === 'teacher' && teacherView === 'class' && c && !c.resetForDeletion && c.students.length && c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)));
-    if(actions) actions.style.display = inCastle ? 'none' : 'flex';
-    recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existing);
-    recordBtn.title = existing ? 'La Coppa di questa classe e di questo anno scolastico è già registrata.'
+    
+const existing = c && houseCupArchiveLoaded
+  ? houseCupArchiveRecords.find(r =>
+      normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) &&
+      normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear))
+  : null;
+
+const currentTotals = c ? totals(c.students) : null;
+
+const existingMatchesCurrent = Boolean(existing && currentTotals &&
+  Number(existing.gryffindor_points || 0) === Number(currentTotals.g || 0) &&
+  Number(existing.hufflepuff_points || 0) === Number(currentTotals.t || 0) &&
+  Number(existing.ravenclaw_points || 0) === Number(currentTotals.r || 0) &&
+  Number(existing.slytherin_points || 0) === Number(currentTotals.s || 0));
+
+const canRecord = Boolean(
+  role === 'teacher' &&
+  teacherView === 'class' &&
+  c &&
+  !c.resetForDeletion &&
+  c.students.length &&
+  c.students.every(st =>
+    st.house && Object.prototype.hasOwnProperty.call(houses, st.house))
+);
+
+if(actions) actions.style.display = inCastle ? 'none' : 'flex';
+
+recordBtn.disabled =
+  houseCupArchiveBusy ||
+  !houseCupArchiveLoaded ||
+  !canRecord ||
+  Boolean(existingMatchesCurrent);
+
+recordBtn.textContent =
+  existing && !existingMatchesCurrent
+    ? '↻ Aggiorna la Coppa della classe selezionata'
+    : '＋ Registra la Coppa della classe selezionata';
+
+recordBtn.title = existingMatchesCurrent
+  ? 'La Coppa è già registrata e i punteggi coincidono con quelli attuali.'
+  : existing
+    ? 'I punteggi della classe sono cambiati: puoi aggiornare la Coppa già registrata.'
+    : !houseCupArchiveLoaded
+      ? 'Attendi il caricamento dell’Albo d’oro.'
+      : !c
+        ? 'Seleziona una classe prima di registrare la Coppa.'
+        : c.resetForDeletion
+          ? 'La classe è già stata azzerata.'
+          : !c.students.length
+            ? 'La classe non contiene studenti.'
+            : !c.students.every(st =>
+                st.house && Object.prototype.hasOwnProperty.call(houses, st.house))
+              ? 'Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'
+              : 'Registra una fotografia dei punteggi finali di questa classe.';
+
       : !houseCupArchiveLoaded ? 'Attendi il caricamento dell’Albo d’oro.'
       : !c ? 'Seleziona una classe prima di registrare la Coppa.'
       : c.resetForDeletion ? 'La classe è già stata azzerata.'
@@ -1517,19 +1567,37 @@ input, select, .authbox input {
     if(!c || c.resetForDeletion || !c.students.length){ showToast('Seleziona una classe con studenti e risultati da registrare.'); return; }
     if(!c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house))){ showToast('Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'); return; }
     if(!supabase || !supabaseUser){ showToast('Accedi in modalità docente per registrare una Coppa.'); return; }
-    const existing = houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear));
-    if(existing){
-      renderHouseCupArchive();
-      showToast('Questa classe ha già una Coppa registrata per questo anno scolastico.');
-      return;
-    }
-    const totalsByHouse = totals(c.students);
+    
+const existing = houseCupArchiveRecords.find(r =>
+  normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) &&
+  normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear)
+);
+
+const totalsByHouse = totals(c.students);
+
+const existingMatchesCurrent = Boolean(existing &&
+  Number(existing.gryffindor_points || 0) === Number(totalsByHouse.g || 0) &&
+  Number(existing.hufflepuff_points || 0) === Number(totalsByHouse.t || 0) &&
+  Number(existing.ravenclaw_points || 0) === Number(totalsByHouse.r || 0) &&
+  Number(existing.slytherin_points || 0) === Number(totalsByHouse.s || 0));
+
+if(existingMatchesCurrent){
+  renderHouseCupArchive();
+  showToast('La Coppa è già aggiornata: i punteggi coincidono con quelli attuali.');
+  return;
+}
+
     const maxScore = Math.max(...Object.values(totalsByHouse));
     const winners = Object.entries(totalsByHouse).filter(([,value]) => value === maxScore).map(([key]) => houses[key]);
     const winner = winners.length > 1 ? 'EX_AEQUO' : winners[0];
     const winnerDescription = winners.length > 1 ? winners.join(', ') + ' (ex aequo)' : winners[0];
     const detail = `Classe: ${c.name} · ${c.schoolYear}\n\nGrifondoro: ${pointLabel(totalsByHouse.g)}\nTassorosso: ${pointLabel(totalsByHouse.t)}\nCorvonero: ${pointLabel(totalsByHouse.r)}\nSerpeverde: ${pointLabel(totalsByHouse.s)}\n\nVincitrice: ${winnerDescription}\n\nQuesta fotografia resterà nell’Albo d’oro anche se la classe verrà successivamente azzerata o eliminata.`;
-    if(!confirm('Vuoi registrare questa Coppa nell’Albo d’oro?\n\n' + detail)) return;
+    if(!confirm(
+  (existing
+    ? 'Vuoi aggiornare la Coppa già registrata nell’Albo d’oro?'
+    : 'Vuoi registrare questa Coppa nell’Albo d’oro?'
+  ) + '\n\n' + detail
+)) return;
     houseCupArchiveBusy = true;
     renderHouseCupArchive();
     try {
@@ -1543,22 +1611,43 @@ input, select, .authbox input {
         slytherin_points: totalsByHouse.s,
         winner_house: winner
       };
-      const { error } = await supabase.from('house_cup_archive').insert(payload);
-      if(error) {
-        if(error.code === '23505') throw new Error('Esiste già una Coppa registrata per questa classe e questo anno scolastico.');
-        throw error;
-      }
-      houseCupArchiveLoaded = false;
-      await loadHouseCupArchive();
-      showToast('Coppa registrata nell’Albo d’oro.');
-    } catch(error) {
-      console.error('Errore registrazione Coppa:', error);
-      showToast(error.message && /Esiste già una Coppa/.test(error.message) ? error.message : 'Registrazione non riuscita. Verifica che la tabella e le policy Supabase siano state create correttamente.');
-    } finally {
-      houseCupArchiveBusy = false;
-      renderHouseCupArchive();
-    }
+
+let writeResult;
+
+if(existing){
+  writeResult = await supabase
+    .from('house_cup_archive')
+    .update({
+      ...payload,
+      recorded_at: new Date().toISOString()
+    })
+    .eq('id', existing.id);
+} else {
+  writeResult = await supabase
+    .from('house_cup_archive')
+    .insert(payload);
+}
+
+const { error } = writeResult;
+
+if(error){
+  if(error.code === '23505'){
+    throw new Error(
+      'Esiste già una Coppa registrata per questa classe e questo anno scolastico.'
+    );
   }
+  throw error;
+}
+
+houseCupArchiveLoaded = false;
+await loadHouseCupArchive();
+
+showToast(
+  existing
+    ? 'Coppa aggiornata nell’Albo d’oro.'
+    : 'Coppa registrata nell’Albo d’oro.'
+);
+
 
   function renderClassManager(){
     const select = $('activeClassSelect');
