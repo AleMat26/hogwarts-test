@@ -1419,10 +1419,20 @@ input, select, .authbox input {
       : !c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house)) ? 'Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'
       : 'Registra una fotografia dei punteggi finali di questa classe.';
     currentLabel.textContent = c ? 'Classe selezionata: ' + c.name + ' · ' + c.schoolYear + (c.archived ? ' (archivio)' : '') : 'Nessuna classe selezionata.';
+    // Nel contesto di una classe si mostra esclusivamente la Coppa di quella
+    // specifica classe e anno scolastico. Il Castello, che non è una classe,
+    // mantiene invece la vista complessiva dell'Albo d'oro.
+    const visibleRecords = inCastle
+      ? houseCupArchiveRecords
+      : c
+        ? houseCupArchiveRecords.filter(record => normalizeArchiveKey(record.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(record.school_year) === normalizeArchiveKey(c.schoolYear))
+        : [];
     if(!houseCupArchiveLoaded && !houseCupArchiveBusy){ status.textContent = 'Apri l’Albo d’oro per caricare le Coppe salvate.'; }
     else if(houseCupArchiveBusy){ status.textContent = 'Operazione in corso…'; }
-    else { status.textContent = houseCupArchiveRecords.length ? 'Coppe registrate: ' + houseCupArchiveRecords.length : 'Non è ancora stata registrata nessuna Coppa.'; }
-    list.innerHTML = houseCupArchiveRecords.map(record => {
+    else if(inCastle){ status.textContent = visibleRecords.length ? 'Coppe registrate: ' + visibleRecords.length : 'Non è ancora stata registrata nessuna Coppa.'; }
+    else if(!c){ status.textContent = 'Seleziona una classe per consultare il suo Albo d’oro.'; }
+    else { status.textContent = visibleRecords.length ? 'Coppa registrata per questa classe e questo anno scolastico.' : 'Non è ancora stata registrata una Coppa per questa classe e questo anno scolastico.'; }
+    list.innerHTML = visibleRecords.map(record => {
       const scores = [
         ['g','Grifondoro',record.gryffindor_points],
         ['t','Tassorosso',record.hufflepuff_points],
