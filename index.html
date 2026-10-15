@@ -3051,6 +3051,10 @@ $('promoteClassBtn').onclick = async () => {
   // (inclusi quelli sui suoi controlli) non la chiudono.
   document.addEventListener('click', event => {
     if(!publicArchiveView) return;
+    // Il click sul pulsante che apre l'Albo arriva anche a document dopo
+    // aver impostato publicArchiveView=true: non deve essere interpretato
+    // come un click sullo sfondo, altrimenti la vista si chiude subito.
+    if(event.target.closest('#publicAlboOroButton')) return;
     const panel = $('houseCupArchivePanel');
     if(panel && !panel.contains(event.target)) closePublicHouseCupArchive();
   });
