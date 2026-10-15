@@ -1847,20 +1847,28 @@ if (inCastle) {
 }
 
     $('sortBtn').disabled = (role === 'teacher' && teacherView === 'castle') || activeIsArchived() || !state.students.length || state.students.every(st => st.house);
+    // Ultimo controllo dopo il render: la visibilità segue sempre la selezione finale del menu.
+    updatePublicAlboVisibility();
   }
 
   function updatePublicAlboVisibility(){
-    // Usa sia lo stato applicativo sia il valore effettivo del selettore:
-    // in una singola classe l'accesso all'Albo deve essere completamente nascosto.
+    // Fonte di verità: il valore attualmente mostrato nel menu a tendina.
+    // Non usiamo publicClassId, che può essere temporaneamente non sincronizzato
+    // durante un render o dopo il ripristino della selezione.
     const selector = $('publicClassSelect');
-    const isCastle = publicClassId === ALL_ACTIVE_CLASSES &&
-      (!selector || selector.value === ALL_ACTIVE_CLASSES);
+    const isCastle = Boolean(selector && selector.value === ALL_ACTIVE_CLASSES);
     const showPublicAlbo = role !== 'teacher' && isCastle && publicHasAlboRecords;
     const button = $('publicAlboOroButton');
     const homeTop = $('publicHomeTop');
     if(button){
-      button.style.display = showPublicAlbo ? 'flex' : 'none';
-      button.hidden = !showPublicAlbo;
+      if(showPublicAlbo){
+        button.hidden = false;
+        button.style.removeProperty('display');
+        button.style.setProperty('display', 'flex', 'important');
+      } else {
+        button.hidden = true;
+        button.style.setProperty('display', 'none', 'important');
+      }
       button.setAttribute('aria-hidden', showPublicAlbo ? 'false' : 'true');
     }
     if(homeTop) homeTop.classList.toggle('has-albo', showPublicAlbo);
