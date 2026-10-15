@@ -937,28 +937,29 @@ input, select, .authbox input {
 
 
 
-/* Albo d'oro: cornice dorata animata sopra il bordo originale della Casata */
+/* Albo d'oro: cornice dorata e alone con sfumatura continua */
 #houseCupArchivePanel .house-cup-winner-score {
   position: relative;
-  animation: houseCupWinnerGlow 6s ease-in-out infinite;
 }
 
-/* Cornice dorata indipendente: il bordo della Casata rimane intatto */
+/* Bordo dorato e alone: sfumano insieme, senza intermittenza */
 #houseCupArchivePanel .house-cup-winner-score::before {
   content: "";
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(255, 240, 178, 0.2);
+  border: 1px solid rgba(255, 240, 178, 0.95);
   border-radius: inherit;
   box-shadow:
-    0 0 5px rgba(244, 217, 140, 0.2),
-    inset 0 0 4px rgba(244, 217, 140, 0.05);
-  opacity: 0.6;
+    0 0 5px rgba(244, 217, 140, 0.8),
+    0 0 10px rgba(244, 217, 140, 0.45),
+    0 0 14px rgba(244, 217, 140, 0.2),
+    inset 0 0 5px rgba(244, 217, 140, 0.25);
+  opacity: 0.55;
   pointer-events: none;
   animation: houseCupWinnerFrame 6s ease-in-out infinite;
 }
 
-/* Stella: invariata */
+/* Stella: lasciata esattamente come prima */
 #houseCupArchivePanel .house-cup-winner-score::after {
   content: '✦';
   position: absolute;
@@ -977,7 +978,7 @@ input, select, .authbox input {
   text-shadow: 0 0 7px rgba(244, 217, 140, .45);
 }
 
-/* L'opacità aumenta e diminuisce in modo continuo, senza mai azzerarsi */
+/* Bordo e alone cambiano opacità insieme, gradualmente */
 @keyframes houseCupWinnerFrame {
   0%, 100% {
     opacity: 0.55;
@@ -987,21 +988,7 @@ input, select, .authbox input {
   }
 }
 
-/* L'alone segue la stessa pulsazione della cornice */
-@keyframes houseCupWinnerGlow {
-  0%, 100% {
-    box-shadow:
-      0 0 3px rgba(244, 217, 140, 0.12),
-      inset 0 0 3px rgba(244, 217, 140, 0.03);
-  }
-  50% {
-    box-shadow:
-      0 0 9px rgba(244, 217, 140, 0.5),
-      0 0 14px rgba(244, 217, 140, 0.12),
-      inset 0 0 7px rgba(244, 217, 140, 0.1);
-  }
-}
-
+/* Animazione della stella: invariata */
 @keyframes houseCupWinnerStar {
   0%, 100% {
     opacity: .55;
@@ -1014,15 +1001,11 @@ input, select, .authbox input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #houseCupArchivePanel .house-cup-winner-score,
   #houseCupArchivePanel .house-cup-winner-score::before,
   #houseCupArchivePanel .house-cup-winner-score::after {
     animation: none !important;
   }
 }
-
-
-
 
 
 </style>
