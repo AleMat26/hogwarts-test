@@ -1489,11 +1489,13 @@ input, select, .authbox input {
       try {
         const { data: archiveRows, error: archiveError } = await supabase
           .from('house_cup_archive').select('id').limit(1);
-        // Nascondi il pulsante solo se la query riesce e conferma che l'archivio è vuoto.
-        // Se la lettura è bloccata da RLS/permessi, lo stato è sconosciuto: non nasconderlo.
-        publicHasAlboRecords = archiveError ? true : Array.isArray(archiveRows) && archiveRows.length > 0;
+        // Supabase può restituire [] senza errore quando RLS nasconde le righe
+        // all'utente anonimo. Quindi una lista vuota non dimostra che l'Albo sia vuoto.
+        // Manteniamo disponibile il pulsante pubblico; per nasconderlo in modo
+        // affidabile serve una RPC pubblica che restituisca soltanto un booleano.
+        publicHasAlboRecords = true;
       } catch (_) {
-        // Errore di lettura: evita di trattare uno stato sconosciuto come archivio vuoto.
+        // Stato non verificabile in modalità pubblica: non nascondere l'accesso.
         publicHasAlboRecords = true;
       }
       const mappedClasses = (classes || []).map(c => ({
