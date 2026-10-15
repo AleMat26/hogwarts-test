@@ -1851,9 +1851,9 @@ if (inCastle) {
 
   function render(){
     renderPublicClassSelector();
-    // L'accesso all'Albo è globale: non deve dipendere dalla classe scelta
-    // nel selettore pubblico. La verifica dei record viene effettuata da loadPublicData.
-    const showPublicAlbo = role !== 'teacher' && publicHasAlboRecords;
+    // Mostra l'accesso all'Albo d'oro solo nella vista pubblica del Castello,
+    // mai quando è selezionata una singola classe.
+    const showPublicAlbo = role !== 'teacher' && publicClassId === ALL_ACTIVE_CLASSES && publicHasAlboRecords;
 
     $('publicAlboOroButton').style.display = showPublicAlbo ? 'flex' : 'none';
     // Quando non ci sono Coppe registrate, rimuove anche il pulsante e il suo
