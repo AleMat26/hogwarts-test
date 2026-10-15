@@ -937,15 +937,6 @@ input, select, .authbox input {
 
 
 /* Albo d'oro: le Casate vincitrici hanno una cornice dorata luminosa e scintillante. */
-/* Albo d'oro: cornice dorata con luminosità graduale e stellina sincronizzata. */
-#houseCupArchivePanel .house-cup-winner-score {
-  position: relative;
-  border: 1px solid #f4d98c !important;
-  box-shadow: 0 0 5px rgba(244,217,140,.45), inset 0 0 6px rgba(244,217,140,.10);
-  animation: houseCupWinnerGlow 3s ease-in-out infinite;
-}
-
-/* Albo d'oro: cornice dorata con luminosità graduale e stellina sincronizzata. */
 #houseCupArchivePanel .house-cup-winner-score {
   position: relative;
   border: 1px solid #f4d98c !important;
@@ -1008,10 +999,6 @@ input, select, .authbox input {
   #houseCupArchivePanel .house-cup-winner-score::after {
     animation: none !important;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  #houseCupArchivePanel .house-cup-winner-score,
-  #houseCupArchivePanel .house-cup-winner-score::after { animation: none !important; }
 }
 
 </style>
