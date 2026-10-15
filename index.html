@@ -935,6 +935,43 @@ input, select, .authbox input {
 .house-student-clickable { cursor: pointer; }
 .house-student-clickable:hover, .house-student-clickable:focus-visible { outline: 1px solid var(--gold); background: rgba(226,194,122,.09); }
 
+
+/* Albo d'oro: le Casate vincitrici hanno una cornice dorata luminosa e scintillante. */
+#houseCupArchivePanel .house-cup-winner-score {
+  position: relative;
+  border: 1px solid #f4d98c !important;
+  box-shadow: 0 0 5px rgba(244,217,140,.55), inset 0 0 8px rgba(244,217,140,.12);
+  animation: houseCupWinnerSparkle 2.2s ease-in-out infinite;
+}
+#houseCupArchivePanel .house-cup-winner-score::after {
+  content: '✦';
+  position: absolute;
+  top: -8px;
+  right: -5px;
+  color: #fff1b8;
+  font-size: 12px;
+  line-height: 1;
+  text-shadow: 0 0 5px #f4d98c, 0 0 10px #f4d98c;
+  pointer-events: none;
+  animation: houseCupWinnerTwinkle 1.4s ease-in-out infinite alternate;
+}
+#houseCupArchivePanel .house-cup-winner-score strong {
+  color: #fff0b2 !important;
+  text-shadow: 0 0 7px rgba(244,217,140,.45);
+}
+@keyframes houseCupWinnerSparkle {
+  0%, 100% { border-color: #c8a64d; box-shadow: 0 0 3px rgba(244,217,140,.28), inset 0 0 4px rgba(244,217,140,.06); }
+  50% { border-color: #fff0b2; box-shadow: 0 0 10px rgba(244,217,140,.72), 0 0 17px rgba(244,217,140,.22), inset 0 0 9px rgba(244,217,140,.16); }
+}
+@keyframes houseCupWinnerTwinkle {
+  from { opacity: .45; transform: scale(.8) rotate(0deg); }
+  to { opacity: 1; transform: scale(1.18) rotate(18deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #houseCupArchivePanel .house-cup-winner-score,
+  #houseCupArchivePanel .house-cup-winner-score::after { animation: none !important; }
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1518,9 +1555,19 @@ input, select, .authbox input {
         ['s','Serpeverde',record.slytherin_points]
       ];
       const date = record.recorded_at ? new Date(record.recorded_at).toLocaleDateString('it-IT') : '';
+      const maxScore = Math.max(...scores.map(([, , value]) => Number(value) || 0));
+      const winningScores = scores.filter(([, , value]) => (Number(value) || 0) === maxScore);
+      const winnerNames = record.winner_house === 'EX_AEQUO'
+        ? winningScores.map(([, label]) => label).join(' e ')
+        : record.winner_house;
       return `<article class="house-cup-record">
-        <div class="house-cup-record-head"><div><h4 class="house-cup-record-title">${esc(record.class_name)} · ${esc(record.school_year)}</h4><div class="house-cup-record-meta">Registrata il ${esc(date || '—')}</div></div><span class="house-cup-record-winner">🏆 ${esc(record.winner_house === 'EX_AEQUO' ? 'Vittoria ex aequo' : record.winner_house)}</span></div>
-        <div class="house-cup-record-scores">${scores.map(([key,label,value]) => `<div class="house-cup-record-score house-score-${key}"><span>${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label}</span><strong>${esc(pointLabel(Number(value) || 0))}</strong></div>`).join('')}</div>
+        <div class="house-cup-record-head"><div><h4 class="house-cup-record-title">${esc(record.class_name)} · ${esc(record.school_year)}</h4><div class="house-cup-record-meta">Registrata il ${esc(date || '—')}</div></div><span class="house-cup-record-winner">🏆 ${esc(winnerNames)}</span></div>
+        <div class="house-cup-record-scores">${scores.map(([key,label,value]) => {
+          const isWinner = record.winner_house === 'EX_AEQUO'
+            ? (Number(value) || 0) === maxScore
+            : label === record.winner_house;
+          return `<div class="house-cup-record-score house-score-${key}${isWinner ? ' house-cup-winner-score' : ''}"><span>${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label}</span><strong>${esc(pointLabel(Number(value) || 0))}</strong></div>`;
+        }).join('')}</div>
       </article>`;
     }).join('');
   }
