@@ -1340,6 +1340,8 @@ input, select, .authbox input {
   let houseCupArchiveRecords = [];
   let houseCupArchiveLoaded = false;
   let houseCupArchiveBusy = false;
+  // La homepage mostra l'accesso all'Albo d'oro solo se esiste almeno una Coppa registrata.
+  let publicHasAlboRecords = false;
 
   const DEFAULT_YEAR = '2026–2027';
   const romanValues = { I:1, V:5, X:10, L:50, C:100, D:500, M:1000 };
@@ -1482,6 +1484,15 @@ input, select, .authbox input {
       ]);
       if(classError) throw classError;
       if(scoreError) throw scoreError;
+      // La verifica dell'Albo è indipendente dal caricamento delle classi: se la
+      // tabella non è accessibile, la homepage resta comunque utilizzabile.
+      try {
+        const { data: archiveRows, error: archiveError } = await supabase
+          .from('house_cup_archive').select('id').limit(1);
+        publicHasAlboRecords = !archiveError && Array.isArray(archiveRows) && archiveRows.length > 0;
+      } catch (_) {
+        publicHasAlboRecords = false;
+      }
       const mappedClasses = (classes || []).map(c => ({
         id: String(c.class_id), dbId: String(c.class_id), clientId: String(c.class_id), name: c.class_name,
         schoolYear: c.school_year || DEFAULT_YEAR, archived: false, resetForDeletion: false, nextId: 5,
@@ -1836,13 +1847,14 @@ if (inCastle) {
   function render(){
     renderPublicClassSelector();
     const showPublicAlbo =
-  role !== 'teacher' &&
-  publicClassId === ALL_ACTIVE_CLASSES;
+      role !== 'teacher' &&
+      publicClassId === ALL_ACTIVE_CLASSES &&
+      publicHasAlboRecords;
 
-$('publicAlboOroButton').style.display =
-  showPublicAlbo ? 'flex' : 'none';
-
-$('publicHomeTop').classList.toggle('has-albo', showPublicAlbo);
+    $('publicAlboOroButton').style.display = showPublicAlbo ? 'flex' : 'none';
+    // Quando non ci sono Coppe registrate, rimuove anche il pulsante e il suo
+    // spazio nella griglia: la selezione della classe resta centrata e compatta.
+    $('publicHomeTop').classList.toggle('has-albo', showPublicAlbo);
     // In modalità docente i punteggi seguono esclusivamente la classe gestita.
     // Nella homepage pubblica la selezione è indipendente e, di default, cumulativa.
     const teacherClass = role === 'teacher' ? activeClass() : null;
