@@ -937,29 +937,29 @@ input, select, .authbox input {
 
 
 
-/* Albo d'oro: cornice dorata e alone con sfumatura continua */
+/* Box vincitrice: nessuna animazione separata sulla box */
 #houseCupArchivePanel .house-cup-winner-score {
   position: relative;
 }
 
-/* Bordo dorato e alone: sfumano insieme, senza intermittenza */
+/* Un solo livello: bordo dorato e alone sfumano insieme */
 #houseCupArchivePanel .house-cup-winner-score::before {
   content: "";
   position: absolute;
-  inset: 0;
-  border: 1px solid rgba(255, 240, 178, 0.95);
+  inset: -1px;
+  border: 1px solid rgba(255, 240, 178, 0.9);
   border-radius: inherit;
   box-shadow:
     0 0 5px rgba(244, 217, 140, 0.8),
-    0 0 10px rgba(244, 217, 140, 0.45),
-    0 0 14px rgba(244, 217, 140, 0.2),
-    inset 0 0 5px rgba(244, 217, 140, 0.25);
+    0 0 10px rgba(244, 217, 140, 0.5),
+    0 0 16px rgba(244, 217, 140, 0.25),
+    inset 0 0 6px rgba(244, 217, 140, 0.2);
   opacity: 0.55;
   pointer-events: none;
   animation: houseCupWinnerFrame 6s ease-in-out infinite;
 }
 
-/* Stella: lasciata esattamente come prima */
+/* Stella: invariata */
 #houseCupArchivePanel .house-cup-winner-score::after {
   content: '✦';
   position: absolute;
@@ -978,17 +978,12 @@ input, select, .authbox input {
   text-shadow: 0 0 7px rgba(244, 217, 140, .45);
 }
 
-/* Bordo e alone cambiano opacità insieme, gradualmente */
+/* L'unica animazione del bordo e dell'alone */
 @keyframes houseCupWinnerFrame {
-  0%, 100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
-/* Animazione della stella: invariata */
 @keyframes houseCupWinnerStar {
   0%, 100% {
     opacity: .55;
