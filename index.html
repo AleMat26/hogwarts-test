@@ -1612,10 +1612,13 @@ input, select, .authbox input {
     const actions = document.querySelector('.house-cup-archive-actions');
     if(!list || !status || !recordBtn) return;
     const inCastle = role === 'teacher' && teacherView === 'castle';
+    // Il Castello docente e l'Albo d'oro pubblico mostrano l'archivio completo.
+    // Soltanto quando si consulta una singola classe si applica il filtro classe/anno.
+    const showAllRecords = inCastle || publicArchiveView;
     // Non usare activeClass() qui: in caso di ID numerico/stringa non coincidente
     // può ricadere sulla prima classe e mostrare la sua Coppa nelle altre classi.
     // Per l'Albo d'oro bisogna identificare in modo esatto la classe selezionata.
-    const c = inCastle ? null : (state.classes.find(item => String(item.id) === String(state.activeClassId)) || null);
+    const c = showAllRecords ? null : (state.classes.find(item => String(item.id) === String(state.activeClassId)) || null);
     const existing = c && houseCupArchiveLoaded ? houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear)) : null;
     const currentTotals = c ? totals(c.students) : null;
     const existingMatchesCurrent = Boolean(existing && currentTotals &&
@@ -1660,14 +1663,14 @@ input, select, .authbox input {
     // Nel contesto di una classe si mostra esclusivamente la Coppa di quella
     // specifica classe e anno scolastico. Il Castello, che non è una classe,
     // mantiene invece la vista complessiva dell'Albo d'oro.
-    const visibleRecords = (inCastle
+    const visibleRecords = (showAllRecords
       ? houseCupArchiveRecords
       : c
         ? houseCupArchiveRecords.filter(record => normalizeArchiveKey(record.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(record.school_year) === normalizeArchiveKey(c.schoolYear))
         : []).slice().sort(compareHouseCupRecords);
     if(!houseCupArchiveLoaded && !houseCupArchiveBusy){ status.textContent = 'Apri l’Albo d’oro per caricare le Coppe salvate.'; }
     else if(houseCupArchiveBusy){ status.textContent = 'Operazione in corso…'; }
-    else if(inCastle){ status.textContent = visibleRecords.length ? 'Coppe registrate: ' + visibleRecords.length : 'Non è ancora stata registrata nessuna Coppa.'; }
+    else if(showAllRecords){ status.textContent = visibleRecords.length ? 'Coppe registrate: ' + visibleRecords.length : 'Non è ancora stata registrata nessuna Coppa.'; }
     else if(!c){ status.textContent = 'Seleziona una classe per consultare il suo Albo d’oro.'; }
     else { status.textContent = visibleRecords.length ? 'Coppa registrata per questa classe e questo anno scolastico.' : 'Non è ancora stata registrata una Coppa per questa classe e questo anno scolastico.'; }
     list.innerHTML = visibleRecords.map(record => {
