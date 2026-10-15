@@ -891,7 +891,68 @@ input, select, .authbox input {
   #classManager select { min-width:0; }
 }
 
+/* Contenitore della selezione classe e del pulsante Albo d'oro */
+.public-home-top {
+  display: grid;
+  grid-template-columns: minmax(0, 760px) 120px;
+  align-items: center;
+  gap: 0;
+  max-width: 880px;
+  margin: 0 auto 24px;
+}
 
+.public-home-top:not(.has-albo) {
+  grid-template-columns: minmax(0, 760px);
+  max-width: 760px;
+}
+
+/* Pulsante Albo d'oro */
+.public-albo-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  gap: 7px;
+  width: 112px;
+  min-height: 100px;
+  padding: 12px 7px;
+  border: 1px solid rgba(216,181,106,.72);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(43,53,72,.96), rgba(29,37,52,.98));
+  color: #f4d98c;
+  font: 600 13px/1.2 system-ui, sans-serif;
+  cursor: default;
+  text-align: center;
+  box-shadow: 0 5px 18px rgba(0,0,0,.18);
+}
+
+.public-albo-button .albo-trophy {
+  font-size: 35px;
+  line-height: 1;
+  filter: drop-shadow(0 0 5px rgba(244,217,140,.2));
+}
+
+@media (max-width: 700px) {
+  .public-home-top,
+  .public-home-top:not(.has-albo) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    max-width: 560px;
+  }
+
+  .public-albo-button {
+    width: 100%;
+    min-height: 74px;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .public-albo-button .albo-trophy {
+    font-size: 27px;
+  }
+}
+  
 /* Campo ricerca studenti nel Castello docente: maggiore leggibilità */
 #castleStudentSearchInput {
   box-sizing: border-box;
@@ -1017,6 +1078,7 @@ input, select, .authbox input {
   <p class="intro" style="text-indent:1.5em">Benvenuti nella Sala Grande.<br>Le Casate conquistano punti e portano la propria squadra in cima alla classifica.</p>
   
   <!-- SCELTA PUBBLICA DELLA CLASSE: indipendente dalla classe gestita dal docente -->
+  <div class="public-home-top" id="publicHomeTop">
   <section class="card public-class-picker" id="publicClassPicker" aria-label="Scegli la classe da visualizzare">
     <div class="public-picker-heading">
       <span class="public-picker-crest" aria-hidden="true">🏰</span>
@@ -1028,7 +1090,14 @@ input, select, .authbox input {
     <label for="publicClassSelect">Classe da visualizzare</label>
     <select id="publicClassSelect" aria-label="Scegli la classe da visualizzare"></select>
   </section>
-
+  <button type="button" class="public-albo-button"
+        id="publicAlboOroButton"
+        aria-label="Albo d'oro"
+        style="display:none">
+  <span class="albo-trophy" aria-hidden="true">🏆</span>
+  <span>Albo d’oro</span>
+</button>
+    </div>
   <!-- ACCESSO -->
   <section class="card" id="accessSection" style="margin-top:0">
     <div class="controls" style="margin:0">
@@ -1766,6 +1835,14 @@ if (inCastle) {
 
   function render(){
     renderPublicClassSelector();
+    const showPublicAlbo =
+  role !== 'teacher' &&
+  publicClassId === ALL_ACTIVE_CLASSES;
+
+$('publicAlboOroButton').style.display =
+  showPublicAlbo ? 'flex' : 'none';
+
+$('publicHomeTop').classList.toggle('has-albo', showPublicAlbo);
     // In modalità docente i punteggi seguono esclusivamente la classe gestita.
     // Nella homepage pubblica la selezione è indipendente e, di default, cumulativa.
     const teacherClass = role === 'teacher' ? activeClass() : null;
