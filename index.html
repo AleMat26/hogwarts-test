@@ -1132,6 +1132,9 @@ input, select, .authbox input {
     </div>
     <h3>🏆 Albo d’oro delle Coppe delle Case</h3>
     <p class="house-cup-archive-note">Qui vengono conservati i risultati finali registrati manualmente. Le Coppe salvate restano disponibili anche se la classe viene azzerata o eliminata.</p>
+    <div id="houseCupArchiveResetActions" style="display:none;margin:0 0 14px">
+      <button type="button" class="btn danger" id="resetHouseCupArchiveBtn">🗑️ Svuota completamente l’Albo d’oro</button>
+    </div>
     <div class="house-cup-archive-actions">
       <button type="button" class="btn primary" id="recordHouseCupBtn">＋ Registra la Coppa della classe selezionata</button>
       <span class="house-cup-archive-note" id="houseCupArchiveCurrentClass"></span>
@@ -1647,6 +1650,10 @@ input, select, .authbox input {
     }
     if(actions) actions.style.display = role === 'teacher' && !inCastle ? 'flex' : 'none';
     if(recordBtn) recordBtn.style.display = role === 'teacher' && !inCastle ? '' : 'none';
+    const resetActions = $('houseCupArchiveResetActions');
+    const resetArchiveBtn = $('resetHouseCupArchiveBtn');
+    if(resetActions) resetActions.style.display = role === 'teacher' && inCastle ? 'block' : 'none';
+    if(resetArchiveBtn) resetArchiveBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || houseCupArchiveRecords.length === 0;
     const publicNav = $('houseCupArchivePublicNav');
     if(publicNav) publicNav.style.display = role !== 'teacher' && publicArchiveView ? 'block' : 'none';
     recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existingMatchesCurrent && !cupWasChanged);
@@ -1835,6 +1842,53 @@ input, select, .authbox input {
     } catch(error) {
       console.error('Errore registrazione Coppa:', error);
       showToast(error.message && /Esiste già una Coppa/.test(error.message) ? error.message : 'Registrazione non riuscita. Verifica che la tabella e le policy Supabase siano state create correttamente.');
+    } finally {
+      houseCupArchiveBusy = false;
+      renderHouseCupArchive();
+    }
+  }
+
+  async function resetHouseCupArchive(){
+    if(role !== 'teacher' || teacherView !== 'castle' || houseCupArchiveBusy) return;
+    if(!supabase || !supabaseUser){ showToast('Accedi in modalità docente per svuotare l’Albo d’oro.'); return; }
+    if(!houseCupArchiveLoaded){
+      try { await loadHouseCupArchive(); }
+      catch(error){
+        console.error('Errore verifica Albo d’oro prima del reset:', error);
+        showToast('Impossibile verificare l’Albo d’oro. Riprova tra poco.');
+        return;
+      }
+    }
+    if(!houseCupArchiveRecords.length){
+      showToast('L’Albo d’oro è già vuoto.');
+      renderHouseCupArchive();
+      return;
+    }
+    const count = houseCupArchiveRecords.length;
+    if(!confirm(`ATTENZIONE: stai per cancellare tutte le ${count} registrazioni dell’Albo d’oro, in modo permanente.
+
+Saranno eliminati soltanto i record della tabella house_cup_archive. Le classi, gli studenti, le Casate e i punteggi resteranno invariati.
+
+Vuoi procedere?`)) return;
+    houseCupArchiveBusy = true;
+    renderHouseCupArchive();
+    try {
+      // L'ID è sempre valorizzato: il filtro permette di eliminare tutte le righe
+      // della tabella soggette alle policy RLS dell'account docente corrente.
+      const { data, error } = await supabase.from('house_cup_archive')
+        .delete()
+        .not('id', 'is', null)
+        .select('id');
+      if(error) throw error;
+      houseCupArchiveRecords = [];
+      houseCupArchiveLoaded = true;
+      houseCupDirtyKeys.clear();
+      houseCupLastAction.clear();
+      renderHouseCupArchive();
+      showToast('Albo d’oro svuotato. Le classi e i loro punteggi non sono stati modificati.');
+    } catch(error) {
+      console.error('Errore svuotamento Albo d’oro:', error);
+      showToast('Svuotamento non riuscito: verifica le policy DELETE della tabella house_cup_archive in Supabase.');
     } finally {
       houseCupArchiveBusy = false;
       renderHouseCupArchive();
@@ -3048,6 +3102,7 @@ $('promoteClassBtn').onclick = async () => {
   $('publicAlboOroButton').onclick = openPublicHouseCupArchive;
   $('backFromPublicAlboBtn').onclick = closePublicHouseCupArchive;
   $('recordHouseCupBtn').onclick = recordHouseCup;
+  $('resetHouseCupArchiveBtn').onclick = resetHouseCupArchive;
 
   // Nella consultazione pubblica, un tocco/click fuori dalla box dell'Albo
   // chiude la vista e ripristina la homepage del Castello. I click dentro la box
