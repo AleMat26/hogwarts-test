@@ -1127,6 +1127,9 @@ input, select, .authbox input {
 
   <!-- ALBO D'ORO: archivio indipendente delle Coppe concluse -->
   <section class="card" id="houseCupArchivePanel" style="display:none" aria-live="polite">
+    <div class="house-cup-archive-public-nav" id="houseCupArchivePublicNav" style="display:none;margin-bottom:14px">
+      <button type="button" class="btn" id="backFromPublicAlboBtn">← Torna al Castello</button>
+    </div>
     <h3>🏆 Albo d’oro delle Coppe delle Case</h3>
     <p class="house-cup-archive-note">Qui vengono conservati i risultati finali registrati manualmente. Le Coppe salvate restano disponibili anche se la classe viene azzerata o eliminata.</p>
     <div class="house-cup-archive-actions">
@@ -1342,6 +1345,7 @@ input, select, .authbox input {
   let houseCupArchiveBusy = false;
   // La homepage mostra l'accesso all'Albo d'oro solo se esiste almeno una Coppa registrata.
   let publicHasAlboRecords = false;
+  let publicArchiveView = false;
 
   const DEFAULT_YEAR = '2026–2027';
   const romanValues = { I:1, V:5, X:10, L:50, C:100, D:500, M:1000 };
@@ -1638,7 +1642,10 @@ input, select, .authbox input {
           : 'Iscrivi i punteggi attuali della classe all’Albo d’oro.';
       }
     }
-    if(actions) actions.style.display = inCastle ? 'none' : 'flex';
+    if(actions) actions.style.display = role === 'teacher' && !inCastle ? 'flex' : 'none';
+    if(recordBtn) recordBtn.style.display = role === 'teacher' && !inCastle ? '' : 'none';
+    const publicNav = $('houseCupArchivePublicNav');
+    if(publicNav) publicNav.style.display = role !== 'teacher' && publicArchiveView ? 'block' : 'none';
     recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existingMatchesCurrent && !cupWasChanged);
     recordBtn.textContent = existing && (!existingMatchesCurrent || cupWasChanged) ? '↻ Aggiorna la Coppa della classe selezionata' : '＋ Registra la Coppa della classe selezionata';
     recordBtn.title = existingMatchesCurrent && !cupWasChanged ? 'La Coppa è già registrata e i punteggi coincidono con quelli attuali.'
@@ -1689,7 +1696,7 @@ input, select, .authbox input {
   }
 
   async function loadHouseCupArchive(){
-    if(!supabase || !supabaseUser) throw new Error('Devi accedere in modalità docente per consultare l’Albo d’oro.');
+    if(!supabase || (role === 'teacher' && !supabaseUser)) throw new Error('Connessione al database non disponibile.');
     houseCupArchiveBusy = true;
     renderHouseCupArchive();
     try {
@@ -1704,6 +1711,37 @@ input, select, .authbox input {
       houseCupArchiveBusy = false;
       renderHouseCupArchive();
     }
+  }
+
+  async function openPublicHouseCupArchive(){
+    if(role === 'teacher') return;
+    publicArchiveView = true;
+    $('publicHomeTop').style.display = 'none';
+    $('accessSection').style.display = 'none';
+    $('houses').style.display = 'none';
+    $('ranking').style.display = 'none';
+    $('houseCupArchivePanel').style.display = 'block';
+    $('houseCupArchivePublicNav').style.display = 'block';
+    $('recordHouseCupBtn').style.display = 'none';
+    document.querySelector('.house-cup-archive-actions').style.display = 'none';
+    $('houseCupArchiveStatus').textContent = 'Caricamento Albo d’oro…';
+    renderHouseCupArchive();
+    try { await loadHouseCupArchive(); }
+    catch(error) {
+      console.error('Errore caricamento Albo d’oro pubblico:', error);
+      $('houseCupArchiveStatus').textContent = 'Impossibile caricare l’Albo d’oro. Verifica che la tabella house_cup_archive consenta la lettura pubblica in Supabase.';
+      $('houseCupArchiveList').innerHTML = '';
+    }
+  }
+
+  function closePublicHouseCupArchive(){
+    publicArchiveView = false;
+    $('houseCupArchivePanel').style.display = 'none';
+    $('publicHomeTop').style.display = '';
+    $('accessSection').style.display = 'block';
+    $('houses').style.display = '';
+    $('ranking').style.display = 'block';
+    render();
   }
 
   async function openHouseCupArchive(){
@@ -2138,6 +2176,11 @@ if (inCastle) {
 
   function setRole(r){
     role = r;
+    publicArchiveView = false;
+    $('publicHomeTop').style.display = '';
+    $('accessSection').style.display = r === 'teacher' ? 'none' : 'block';
+    $('houses').style.display = '';
+    $('ranking').style.display = 'block';
     if(r !== 'teacher') { selectedHouse = null; publicClassId = ALL_ACTIVE_CLASSES; }
     if(r === 'teacher') {
       teacherView = 'castle';
@@ -2183,6 +2226,7 @@ if (inCastle) {
   document.addEventListener('click', e => {
     const archivePanel = $('houseCupArchivePanel');
     if(!archivePanel || archivePanel.style.display === 'none') return;
+    if(publicArchiveView) return;
     if(e.target.closest('#houseCupArchivePanel') || e.target.closest('#houseCupArchiveBtn')) return;
     archivePanel.style.display = 'none';
   });
@@ -2998,7 +3042,18 @@ $('promoteClassBtn').onclick = async () => {
     if(teacherView === 'castle') openHouseCupArchive();
     else recordHouseCup();
   };
+  $('publicAlboOroButton').onclick = openPublicHouseCupArchive;
+  $('backFromPublicAlboBtn').onclick = closePublicHouseCupArchive;
   $('recordHouseCupBtn').onclick = recordHouseCup;
+
+  // Nella consultazione pubblica, un tocco/click fuori dalla box dell'Albo
+  // chiude la vista e ripristina la homepage del Castello. I click dentro la box
+  // (inclusi quelli sui suoi controlli) non la chiudono.
+  document.addEventListener('click', event => {
+    if(!publicArchiveView) return;
+    const panel = $('houseCupArchivePanel');
+    if(panel && !panel.contains(event.target)) closePublicHouseCupArchive();
+  });
 
   // Vista Castello: riepilogo cumulativo di tutte le classi attive, senza pannelli operativi.
   // Per tornare alla gestione si seleziona una classe dal menu a tendina.
