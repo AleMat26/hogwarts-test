@@ -941,7 +941,7 @@ input, select, .authbox input {
   position: relative;
   border: 1px solid #f4d98c !important;
   box-shadow: 0 0 5px rgba(244,217,140,.45), inset 0 0 6px rgba(244,217,140,.10);
-  animation: houseCupWinnerGlow 3s ease-in-out infinite;
+animation: houseCupWinnerGlow 6s ease-in-out infinite;
 }
 
 #houseCupArchivePanel .house-cup-winner-score::after {
@@ -962,17 +962,27 @@ input, select, .authbox input {
   text-shadow: 0 0 7px rgba(244,217,140,.45);
 }
 
-@keyframes houseCupWinnerGlow {
+ @keyframes houseCupWinnerGlow {
   0%, 100% {
-    border-color: #c8a64d;
-    box-shadow: 0 0 3px rgba(244,217,140,.25),
-                inset 0 0 4px rgba(244,217,140,.06);
+    border-color: rgba(200, 166, 77, .55);
+    box-shadow: 0 0 2px rgba(244, 217, 140, .12),
+                inset 0 0 2px rgba(244, 217, 140, .02);
+  }
+  25% {
+    border-color: rgba(224, 195, 112, .72);
+    box-shadow: 0 0 4px rgba(244, 217, 140, .25),
+                inset 0 0 4px rgba(244, 217, 140, .05);
   }
   50% {
-    border-color: #fff0b2;
-    box-shadow: 0 0 10px rgba(244,217,140,.65),
-                0 0 16px rgba(244,217,140,.18),
-                inset 0 0 8px rgba(244,217,140,.13);
+    border-color: rgba(255, 240, 178, 1);
+    box-shadow: 0 0 9px rgba(244, 217, 140, .50),
+                0 0 14px rgba(244, 217, 140, .12),
+                inset 0 0 7px rgba(244, 217, 140, .10);
+  }
+  75% {
+    border-color: rgba(224, 195, 112, .72);
+    box-shadow: 0 0 4px rgba(244, 217, 140, .25),
+                inset 0 0 4px rgba(244, 217, 140, .05);
   }
 }
 
