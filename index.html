@@ -1849,16 +1849,27 @@ if (inCastle) {
     $('sortBtn').disabled = (role === 'teacher' && teacherView === 'castle') || activeIsArchived() || !state.students.length || state.students.every(st => st.house);
   }
 
+  function updatePublicAlboVisibility(){
+    // Usa sia lo stato applicativo sia il valore effettivo del selettore:
+    // in una singola classe l'accesso all'Albo deve essere completamente nascosto.
+    const selector = $('publicClassSelect');
+    const isCastle = publicClassId === ALL_ACTIVE_CLASSES &&
+      (!selector || selector.value === ALL_ACTIVE_CLASSES);
+    const showPublicAlbo = role !== 'teacher' && isCastle && publicHasAlboRecords;
+    const button = $('publicAlboOroButton');
+    const homeTop = $('publicHomeTop');
+    if(button){
+      button.style.display = showPublicAlbo ? 'flex' : 'none';
+      button.hidden = !showPublicAlbo;
+      button.setAttribute('aria-hidden', showPublicAlbo ? 'false' : 'true');
+    }
+    if(homeTop) homeTop.classList.toggle('has-albo', showPublicAlbo);
+  }
+
   function render(){
     renderPublicClassSelector();
-    // Mostra l'accesso all'Albo d'oro solo nella vista pubblica del Castello,
-    // mai quando è selezionata una singola classe.
-    const showPublicAlbo = role !== 'teacher' && publicClassId === ALL_ACTIVE_CLASSES && publicHasAlboRecords;
-
-    $('publicAlboOroButton').style.display = showPublicAlbo ? 'flex' : 'none';
-    // Quando non ci sono Coppe registrate, rimuove anche il pulsante e il suo
-    // spazio nella griglia: la selezione della classe resta centrata e compatta.
-    $('publicHomeTop').classList.toggle('has-albo', showPublicAlbo);
+    // Mostra l'accesso all'Albo d'oro solo nella vista pubblica del Castello.
+    updatePublicAlboVisibility();
     // In modalità docente i punteggi seguono esclusivamente la classe gestita.
     // Nella homepage pubblica la selezione è indipendente e, di default, cumulativa.
     const teacherClass = role === 'teacher' ? activeClass() : null;
@@ -2223,6 +2234,8 @@ if (inCastle) {
     publicClassId = value;
     selectedHouse = null;
     $('houseSearch').value = '';
+    // Nascondi/mostra subito la box dell'Albo al cambio di vista.
+    updatePublicAlboVisibility();
     render();
     const chosen = publicClass();
     showToast(chosen ? 'Stai visualizzando ' + chosen.name + ' · ' + chosen.schoolYear + '.' : 'Stai visitando il Castello: punti di tutte le classi attive.');
