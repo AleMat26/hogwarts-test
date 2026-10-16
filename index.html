@@ -2555,7 +2555,7 @@ if (inCastle) {
             } catch(err) {
               lastRemoteSyncError = err;
               console.error('Sincronizzazione Supabase non riuscita:', err);
-              showToast('Modifiche salvate nel browser, ma la sincronizzazione Supabase non è riuscita. Controlla la connessione.');
+              showToast('Sincronizzazione Supabase non riuscita: ' + (err && err.message ? err.message : 'controlla la connessione e le policy RLS.'));
             }
           }
         } finally {
@@ -2733,7 +2733,17 @@ if (inCastle) {
         if(gradeIds.length){ const { error } = await supabase.from('grades').delete().in('id', gradeIds); if(error) throw error; }
         if(oldSt.dbId){ const { error } = await supabase.from('students').delete().eq('id', oldSt.dbId); if(error) throw error; }
       }
-      if(oldC.dbId){ const { error } = await supabase.from('classes').delete().eq('id', oldC.dbId); if(error) throw error; }
+      if(oldC.dbId){
+        const { error } = await supabase.from('classes').delete().eq('id', oldC.dbId);
+        if(error) throw error;
+        // Supabase può rispondere senza errore anche quando RLS impedisce la DELETE.
+        // Verifica quindi che la classe sia davvero sparita prima di aggiornare lo snapshot.
+        const { data: stillThere, error: verifyError } = await supabase.from('classes').select('id').eq('id', oldC.dbId).limit(1);
+        if(verifyError) throw verifyError;
+        if(stillThere && stillThere.length){
+          throw new Error('Supabase non ha eliminato la classe ' + (oldC.name || oldC.dbId) + '. Probabile policy RLS DELETE mancante sulla tabella classes.');
+        }
+      }
     }
     // Riporta nel modello live gli ID generati per i nuovi record e conserva lo snapshot sincronizzato.
     const liveClasses = new Map((state.classes || []).map(c => [classClientKey(c), c]));
@@ -2799,7 +2809,7 @@ if (inCastle) {
 
   $('activeClassSelect').onchange = e => switchClass(e.target.value);
 
-  function deleteAllResetClasses(){
+  async function deleteAllResetClasses(){
     if(role !== 'teacher' || teacherView !== 'castle') return;
     if(!state.classes.length || !state.classes.every(c => c.resetForDeletion)){
       showToast('Puoi eliminare tutte le classi soltanto dopo averle azzerate dal Castello.');
@@ -2830,7 +2840,16 @@ if (inCastle) {
     $('gradeInput').value = '';
     save();
     render();
-    showToast(count === 1 ? 'Classe eliminata. Il Castello è vuoto.' : 'Tutte le classi azzerate sono state eliminate. Il Castello è vuoto.');
+    showToast('Eliminazione avviata: attendo la conferma di Supabase…');
+    // Non mostrare l'operazione come completata finché la sincronizzazione cloud
+    // non è terminata: se il database rifiuta la DELETE, informiamo chiaramente.
+    await remoteSyncPromise;
+    if(lastRemoteSyncError){
+      console.error('Eliminazione delle classi non confermata da Supabase:', lastRemoteSyncError);
+      showToast('ATTENZIONE: le classi sono state tolte da questa schermata, ma non dal database. ' + (lastRemoteSyncError.message || 'Sincronizzazione non riuscita.') + ' Non chiudere la pagina; verifica le policy RLS di Supabase.');
+      return;
+    }
+    showToast(count === 1 ? 'Classe eliminata anche da Supabase. Il Castello è vuoto.' : 'Tutte le classi sono state eliminate anche da Supabase. Il Castello è vuoto.');
   }
 
   function deleteArchivedClass(){
