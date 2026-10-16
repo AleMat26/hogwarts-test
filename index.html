@@ -2815,41 +2815,81 @@ if (inCastle) {
       showToast('Puoi eliminare tutte le classi soltanto dopo averle azzerate dal Castello.');
       return;
     }
-    if(lastSyncedClasses === null && supabase && supabaseUser){
+    if(!supabase || !supabaseUser){
+      showToast('Non sei collegato a Supabase in modalità docente. Nessuna classe è stata eliminata.');
+      return;
+    }
+    if(lastSyncedClasses === null){
       showToast('Attendi il caricamento e la sincronizzazione delle classi prima di eliminarle.');
       return;
     }
     const count = state.classes.length;
-    if(!confirm('Vuoi eliminare definitivamente TUTTE (attive e archiviate) le classi già azzerate?\n\nSaranno eliminati classi, studenti, Casate, punteggi e storico associato, anche dal database sincronizzato. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.')) return;
-    state.classes = [];
-    state.activeClassId = null;
-    state.className = 'Castello';
-    state.schoolYear = DEFAULT_YEAR;
-    state.students = [];
-    state.nextId = 1;
-    state.nextClassId = 1;
-    teacherView = 'castle';
-    publicClassId = ALL_ACTIVE_CLASSES;
-    selectedHouse = null;
-    resetPointsSelection = true;
-    $('houseStudentsPanel').style.display = 'none';
-    $('classCard').style.display = 'none';
-    $('pointsCard').style.display = 'none';
-    $('manageBtn').classList.remove('primary');
-    $('pointsBtn').classList.remove('primary');
-    $('gradeInput').value = '';
-    save();
-    render();
-    showToast('Eliminazione avviata: attendo la conferma di Supabase…');
-    // Non mostrare l'operazione come completata finché la sincronizzazione cloud
-    // non è terminata: se il database rifiuta la DELETE, informiamo chiaramente.
-    await remoteSyncPromise;
-    if(lastRemoteSyncError){
-      console.error('Eliminazione delle classi non confermata da Supabase:', lastRemoteSyncError);
-      showToast('ATTENZIONE: le classi sono state tolte da questa schermata, ma non dal database. ' + (lastRemoteSyncError.message || 'Sincronizzazione non riuscita.') + ' Non chiudere la pagina; verifica le policy RLS di Supabase.');
-      return;
+    if(!confirm('Vuoi eliminare definitivamente TUTTE (attive e archiviate) le classi già azzerate?\n\nSaranno eliminati dal database classi, studenti, voti e storico associato. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.')) return;
+
+    const button = $('deleteAllResetClassesBtn');
+    if(button){ button.disabled = true; button.textContent = '⏳ Eliminazione dal database…'; }
+    try {
+      // Non affidarsi allo snapshot differenziale: elimina esplicitamente i record
+      // cloud appartenenti alle classi dell'account docente e verifica ogni passaggio.
+      const { data: cloudClasses, error: classReadError } = await supabase
+        .from('classes').select('id,name').eq('teacher_id', supabaseUser.id);
+      if(classReadError) throw new Error('Lettura classi Supabase non riuscita: ' + classReadError.message);
+      const classIds = (cloudClasses || []).map(c => c.id);
+      for(const classId of classIds){
+        const { data: cloudStudents, error: studentReadError } = await supabase
+          .from('students').select('id').eq('class_id', classId);
+        if(studentReadError) throw new Error('Lettura studenti non riuscita: ' + studentReadError.message);
+        const studentIds = (cloudStudents || []).map(st => st.id);
+        if(studentIds.length){
+          const { error: gradesDeleteError } = await supabase.from('grades').delete().in('student_id', studentIds);
+          if(gradesDeleteError) throw new Error('Cancellazione voti/storico non riuscita: ' + gradesDeleteError.message);
+        }
+        const { error: studentsDeleteError } = await supabase.from('students').delete().eq('class_id', classId);
+        if(studentsDeleteError) throw new Error('Cancellazione studenti non riuscita: ' + studentsDeleteError.message);
+        const { data: remainingStudents, error: verifyStudentsError } = await supabase
+          .from('students').select('id').eq('class_id', classId).limit(1);
+        if(verifyStudentsError) throw new Error('Verifica cancellazione studenti non riuscita: ' + verifyStudentsError.message);
+        if(remainingStudents && remainingStudents.length) throw new Error('Supabase non ha cancellato gli studenti della classe ' + (cloudClasses.find(c => String(c.id) === String(classId))?.name || classId) + '. Controlla la policy DELETE/RLS della tabella students.');
+        const { error: classDeleteError } = await supabase.from('classes').delete().eq('id', classId);
+        if(classDeleteError) throw new Error('Cancellazione classe non riuscita: ' + classDeleteError.message);
+        const { data: remainingClass, error: verifyClassError } = await supabase
+          .from('classes').select('id').eq('id', classId).limit(1);
+        if(verifyClassError) throw new Error('Verifica cancellazione classe non riuscita: ' + verifyClassError.message);
+        if(remainingClass && remainingClass.length) throw new Error('Supabase non ha eliminato la classe ' + (cloudClasses.find(c => String(c.id) === String(classId))?.name || classId) + '. Controlla la policy DELETE/RLS della tabella classes.');
+      }
+      const { data: remainingCloudClasses, error: finalVerifyError } = await supabase
+        .from('classes').select('id').eq('teacher_id', supabaseUser.id).limit(1);
+      if(finalVerifyError) throw new Error('Verifica finale non riuscita: ' + finalVerifyError.message);
+      if(remainingCloudClasses && remainingCloudClasses.length) throw new Error('La verifica finale trova ancora classi in Supabase: nessuna conferma di eliminazione completa.');
+
+      state.classes = [];
+      state.activeClassId = null;
+      state.className = 'Castello';
+      state.schoolYear = DEFAULT_YEAR;
+      state.students = [];
+      state.nextId = 1;
+      state.nextClassId = 1;
+      teacherView = 'castle';
+      publicClassId = ALL_ACTIVE_CLASSES;
+      selectedHouse = null;
+      resetPointsSelection = true;
+      $('houseStudentsPanel').style.display = 'none';
+      $('classCard').style.display = 'none';
+      $('pointsCard').style.display = 'none';
+      $('manageBtn').classList.remove('primary');
+      $('pointsBtn').classList.remove('primary');
+      $('gradeInput').value = '';
+      lastSyncedClasses = [];
+      lastRemoteSyncError = null;
+      saveLocalOnly();
+      render();
+      showToast(count === 1 ? 'Classe eliminata da Supabase. Il Castello è vuoto.' : 'Tutte le classi sono state eliminate da Supabase. Il Castello è vuoto.');
+    } catch(error) {
+      console.error('Eliminazione classi Supabase non riuscita:', error);
+      showToast('ELIMINAZIONE NON COMPLETATA: ' + (error && error.message ? error.message : 'errore Supabase sconosciuto'));
+    } finally {
+      if(button && button.isConnected){ button.disabled = false; button.textContent = '🗑️ Elimina tutte le classi azzerate'; }
     }
-    showToast(count === 1 ? 'Classe eliminata anche da Supabase. Il Castello è vuoto.' : 'Tutte le classi sono state eliminate anche da Supabase. Il Castello è vuoto.');
   }
 
   function deleteArchivedClass(){
