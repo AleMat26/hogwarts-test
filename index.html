@@ -1484,6 +1484,18 @@ input, select, .authbox input {
       return;
     }
     renderPublicClassSelector();
+    // Controlla l'Albo indipendentemente dalle RPC delle classi e dei punteggi:
+    // l'archivio deve restare visibile anche quando il Castello è vuoto.
+    try {
+      const { data: archiveRows, error: archiveError } = await supabase
+        .from('house_cup_archive').select('id').limit(1);
+      if(archiveError) throw archiveError;
+      publicHasAlboRecords = Array.isArray(archiveRows) && archiveRows.length > 0;
+    } catch (archiveCheckError) {
+      console.error('Impossibile verificare le registrazioni pubbliche dell’Albo d’oro:', archiveCheckError);
+      publicHasAlboRecords = false;
+    }
+    updatePublicAlboVisibility();
     try {
       const [{ data: classes, error: classError }, { data: scores, error: scoreError }] = await Promise.all([
         supabase.rpc('get_public_active_classes'),
@@ -1491,20 +1503,6 @@ input, select, .authbox input {
       ]);
       if(classError) throw classError;
       if(scoreError) throw scoreError;
-      // La verifica dell'Albo è indipendente dal caricamento delle classi: se la
-      // tabella non è accessibile, la homepage resta comunque utilizzabile.
-      try {
-        const { data: archiveRows, error: archiveError } = await supabase
-          .from('house_cup_archive').select('id').limit(1);
-        if(archiveError) throw archiveError;
-        // Il pulsante pubblico compare soltanto se la query anonima vede almeno
-        // una registrazione. La policy SELECT pubblica deve consentire questa
-        // verifica (anche solo dell'id); altrimenti serve una RPC dedicata.
-        publicHasAlboRecords = Array.isArray(archiveRows) && archiveRows.length > 0;
-      } catch (archiveCheckError) {
-        console.error('Impossibile verificare le registrazioni pubbliche dell’Albo d’oro:', archiveCheckError);
-        publicHasAlboRecords = false;
-      }
       const mappedClasses = (classes || []).map(c => ({
         id: String(c.class_id), dbId: String(c.class_id), clientId: String(c.class_id), name: c.class_name,
         schoolYear: c.school_year || DEFAULT_YEAR, archived: false, resetForDeletion: false, nextId: 5,
@@ -1961,7 +1959,11 @@ if (inCastle) {
     // Non usiamo publicClassId, che può essere temporaneamente non sincronizzato
     // durante un render o dopo il ripristino della selezione.
     const selector = $('publicClassSelect');
-    const isCastle = Boolean(selector && selector.value === ALL_ACTIVE_CLASSES);
+    const noActiveClasses = publicDataStatus === 'loaded' && !state.classes.some(c => !c.archived);
+    // Se il Castello è vuoto, il selettore mostra "Nessuna classe attiva" e non
+    // può avere il valore ALL_ACTIVE_CLASSES: in quel caso manteniamo comunque
+    // l'Albo visibile se esistono coppe registrate.
+    const isCastle = Boolean(selector && selector.value === ALL_ACTIVE_CLASSES) || noActiveClasses;
     const showPublicAlbo = role !== 'teacher' && isCastle && publicHasAlboRecords;
     const button = $('publicAlboOroButton');
     const homeTop = $('publicHomeTop');
