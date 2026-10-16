@@ -989,11 +989,14 @@ input, select, .authbox input {
 #houseCupArchivePanel .house-cup-record-score.house-score-t strong { color: #f0d47e !important; }
 #houseCupArchivePanel .house-cup-record-score.house-score-r strong { color: #a9d0ff !important; }
 #houseCupArchivePanel .house-cup-record-score.house-score-s strong { color: #a5e0b4 !important; }
+.house-cup-archive-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; width:100%; }
+.house-cup-archive-toolbar > .house-cup-archive-note { margin:0; }
 .house-cup-archive-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 16px; }
-.house-cup-year-filter { display:flex; width:fit-content; max-width:100%; box-sizing:border-box; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 16px; padding:12px 14px; border:1px solid rgba(226,194,122,.25); border-radius:12px; background:rgba(255,255,255,.025); }
+.house-cup-year-filter { display:flex; width:fit-content; max-width:100%; box-sizing:border-box; align-items:center; gap:10px; flex-wrap:wrap; margin:0; padding:12px 14px; border:1px solid rgba(226,194,122,.25); border-radius:12px; background:rgba(255,255,255,.025); }
 .house-cup-year-filter label { color:var(--text); font:600 14px/1.4 system-ui,sans-serif; }
 .house-cup-year-filter select { width:auto; min-width:0; max-width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:9px; background:var(--card); color:var(--text); font:14px system-ui,sans-serif; }
 .house-cup-archive-note { color:var(--muted); font:13px/1.5 system-ui,sans-serif; }
+@media(max-width:620px) { .house-cup-archive-toolbar { align-items:flex-start; flex-direction:column; gap:8px; } .house-cup-year-filter { max-width:100%; } }
 @media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; } .house-cup-record-score { padding:7px 8px; font:12px system-ui,sans-serif; gap:6px; } .house-cup-record-score span, .house-cup-record-score strong { font-size:12px; } }
 
 .house-student-clickable { cursor: pointer; }
@@ -1134,13 +1137,15 @@ input, select, .authbox input {
       <button type="button" class="btn" id="backFromPublicAlboBtn">← Torna al Castello</button>
     </div>
     <h3>🏆 Albo d’oro delle Coppe delle Case</h3>
-    <p class="house-cup-archive-note">Qui vengono conservati i risultati finali di tutte le classi.</p>
+    <div class="house-cup-archive-toolbar">
+      <p class="house-cup-archive-note">Qui vengono conservati i risultati finali di tutte le classi.</p>
+      <div class="house-cup-year-filter" id="houseCupYearFilter" style="display:none">
+        <label for="houseCupArchiveYearSelect">Anno scolastico da visualizzare</label>
+        <select id="houseCupArchiveYearSelect" aria-label="Filtra l’Albo d’oro per anno scolastico"></select>
+      </div>
+    </div>
     <div id="houseCupArchiveResetActions" style="display:none;margin:0 0 14px">
       <button type="button" class="btn danger" id="resetHouseCupArchiveBtn">🗑️ Svuota completamente l’Albo d’oro</button>
-    </div>
-    <div class="house-cup-year-filter" id="houseCupYearFilter" style="display:none">
-      <label for="houseCupArchiveYearSelect">Anno scolastico da visualizzare</label>
-      <select id="houseCupArchiveYearSelect" aria-label="Filtra l’Albo d’oro per anno scolastico"></select>
     </div>
     <div class="house-cup-archive-actions">
       <button type="button" class="btn primary" id="recordHouseCupBtn">＋ Registra la Coppa della classe selezionata</button>
