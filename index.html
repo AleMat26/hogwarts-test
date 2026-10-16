@@ -1880,15 +1880,26 @@ Vuoi procedere?`)) return;
         .not('id', 'is', null)
         .select('id');
       if(error) throw error;
+      const deletedCount = Array.isArray(data) ? data.length : 0;
+      // Supabase/PostgREST può restituire zero righe senza errore quando le policy
+      // RLS impediscono la DELETE: non dobbiamo fingere che l'archivio sia vuoto.
+      if(deletedCount !== count) {
+        houseCupArchiveLoaded = false;
+        try { await loadHouseCupArchive(); } catch(refreshError) {
+          console.error('Errore aggiornamento Albo d’oro dopo cancellazione incompleta:', refreshError);
+        }
+        throw new Error(`Cancellate ${deletedCount} registrazioni su ${count}. La policy DELETE/RLS di house_cup_archive potrebbe impedire la cancellazione.`);
+      }
       houseCupArchiveRecords = [];
       houseCupArchiveLoaded = true;
       houseCupDirtyKeys.clear();
       houseCupLastAction.clear();
       renderHouseCupArchive();
-      showToast('Albo d’oro svuotato. Le classi e i loro punteggi non sono stati modificati.');
+      showToast(`Albo d’oro svuotato: eliminate ${deletedCount} registrazioni. Classi e punteggi invariati.`);
     } catch(error) {
       console.error('Errore svuotamento Albo d’oro:', error);
-      showToast('Svuotamento non riuscito: verifica le policy DELETE della tabella house_cup_archive in Supabase.');
+      const detail = error && error.message ? error.message : 'Errore sconosciuto';
+      showToast(`Svuotamento non riuscito. ${detail}`);
     } finally {
       houseCupArchiveBusy = false;
       renderHouseCupArchive();
