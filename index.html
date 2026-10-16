@@ -2820,47 +2820,64 @@ if (inCastle) {
       return;
     }
     if(lastSyncedClasses === null){
-      showToast('Attendi il caricamento e la sincronizzazione delle classi prima di eliminarle.');
+      showToast('Attendi il caricamento delle classi prima di eliminarle.');
       return;
     }
-    const count = state.classes.length;
+    const classesToDelete = cloneClasses();
+    if(classesToDelete.some(c => !c.dbId)){
+      showToast('Eliminazione interrotta: manca l’ID database di una classe. Ricarica i dati e riprova.');
+      return;
+    }
+    const count = classesToDelete.length;
     if(!confirm('Vuoi eliminare definitivamente TUTTE (attive e archiviate) le classi già azzerate?\n\nSaranno eliminati dal database classi, studenti, voti e storico associato. L’operazione non si può annullare. Esporta prima un backup JSON se vuoi conservarne una copia.')) return;
 
     const button = $('deleteAllResetClassesBtn');
     if(button){ button.disabled = true; button.textContent = '⏳ Eliminazione dal database…'; }
     try {
-      // Non affidarsi allo snapshot differenziale: elimina esplicitamente i record
-      // cloud appartenenti alle classi dell'account docente e verifica ogni passaggio.
-      const { data: cloudClasses, error: classReadError } = await supabase
-        .from('classes').select('id,name').eq('teacher_id', supabaseUser.id);
-      if(classReadError) throw new Error('Lettura classi Supabase non riuscita: ' + classReadError.message);
-      const classIds = (cloudClasses || []).map(c => c.id);
-      for(const classId of classIds){
-        const { data: cloudStudents, error: studentReadError } = await supabase
-          .from('students').select('id').eq('class_id', classId);
-        if(studentReadError) throw new Error('Lettura studenti non riuscita: ' + studentReadError.message);
-        const studentIds = (cloudStudents || []).map(st => st.id);
-        if(studentIds.length){
-          const { error: gradesDeleteError } = await supabase.from('grades').delete().in('student_id', studentIds);
-          if(gradesDeleteError) throw new Error('Cancellazione voti/storico non riuscita: ' + gradesDeleteError.message);
-        }
-        const { error: studentsDeleteError } = await supabase.from('students').delete().eq('class_id', classId);
-        if(studentsDeleteError) throw new Error('Cancellazione studenti non riuscita: ' + studentsDeleteError.message);
-        const { data: remainingStudents, error: verifyStudentsError } = await supabase
-          .from('students').select('id').eq('class_id', classId).limit(1);
-        if(verifyStudentsError) throw new Error('Verifica cancellazione studenti non riuscita: ' + verifyStudentsError.message);
-        if(remainingStudents && remainingStudents.length) throw new Error('Supabase non ha cancellato gli studenti della classe ' + (cloudClasses.find(c => String(c.id) === String(classId))?.name || classId) + '. Controlla la policy DELETE/RLS della tabella students.');
-        const { error: classDeleteError } = await supabase.from('classes').delete().eq('id', classId);
-        if(classDeleteError) throw new Error('Cancellazione classe non riuscita: ' + classDeleteError.message);
-        const { data: remainingClass, error: verifyClassError } = await supabase
-          .from('classes').select('id').eq('id', classId).limit(1);
-        if(verifyClassError) throw new Error('Verifica cancellazione classe non riuscita: ' + verifyClassError.message);
-        if(remainingClass && remainingClass.length) throw new Error('Supabase non ha eliminato la classe ' + (cloudClasses.find(c => String(c.id) === String(classId))?.name || classId) + '. Controlla la policy DELETE/RLS della tabella classes.');
+      // Prima termina ogni sincronizzazione già in coda, così una richiesta precedente
+      // non può reinserire le classi dopo la cancellazione esplicita.
+      while(remoteSyncTimer || remoteSyncRunning || remoteSyncRequested){
+        if(remoteSyncRequested && !remoteSyncRunning && !remoteSyncTimer) queueRemoteSync();
+        await remoteSyncPromise;
       }
-      const { data: remainingCloudClasses, error: finalVerifyError } = await supabase
-        .from('classes').select('id').eq('teacher_id', supabaseUser.id).limit(1);
-      if(finalVerifyError) throw new Error('Verifica finale non riuscita: ' + finalVerifyError.message);
-      if(remainingCloudClasses && remainingCloudClasses.length) throw new Error('La verifica finale trova ancora classi in Supabase: nessuna conferma di eliminazione completa.');
+
+      // Usa gli ID database delle classi effettivamente caricate dal docente. Non
+      // ricavare la lista da una SELECT filtrata per teacher_id: RLS potrebbe
+      // restituire [] e far sembrare riuscita una cancellazione mai avvenuta.
+      for(const c of classesToDelete){
+        const classId = c.dbId;
+        const students = (c.students || []).filter(st => st.dbId);
+        const studentIds = students.map(st => st.dbId);
+        const expectedGradeIds = students.flatMap(st => (st.history || []).map(h => h.dbId).filter(Boolean));
+
+        if(studentIds.length){
+          const { data: deletedGrades, error: gradesError } = await supabase
+            .from('grades').delete().in('student_id', studentIds).select('id');
+          if(gradesError) throw new Error('Cancellazione voti/storico non riuscita: ' + gradesError.message);
+          if(expectedGradeIds.length && (!Array.isArray(deletedGrades) || deletedGrades.length < expectedGradeIds.length)){
+            throw new Error('Supabase ha confermato la cancellazione di ' + (deletedGrades || []).length + ' voti/storico su almeno ' + expectedGradeIds.length + '. Verifica la policy DELETE/RLS della tabella grades.');
+          }
+          const { data: deletedStudents, error: studentsError } = await supabase
+            .from('students').delete().in('id', studentIds).select('id');
+          if(studentsError) throw new Error('Cancellazione studenti non riuscita: ' + studentsError.message);
+          if(!Array.isArray(deletedStudents) || deletedStudents.length !== studentIds.length){
+            throw new Error('Supabase ha confermato la cancellazione di ' + (deletedStudents || []).length + ' studenti su ' + studentIds.length + '. Verifica la policy DELETE/RLS della tabella students.');
+          }
+        }
+        const { data: deletedClass, error: classError } = await supabase
+          .from('classes').delete().eq('id', classId).select('id');
+        if(classError) throw new Error('Cancellazione classe non riuscita: ' + classError.message);
+        if(!Array.isArray(deletedClass) || deletedClass.length !== 1){
+          throw new Error('Supabase non conferma la cancellazione della classe “' + c.name + '”. La policy DELETE/RLS della tabella classes potrebbe bloccare l’operazione.');
+        }
+      }
+
+      // Verifica indipendente attraverso la stessa RPC pubblica usata dalla homepage.
+      const { data: remainingActive, error: publicVerifyError } = await supabase.rpc('get_public_active_classes');
+      if(publicVerifyError) throw new Error('Verifica homepage non riuscita: ' + publicVerifyError.message);
+      if(Array.isArray(remainingActive) && remainingActive.length){
+        throw new Error('La verifica della homepage trova ancora ' + remainingActive.length + ' classi attive nel database. Non considero completata l’operazione.');
+      }
 
       state.classes = [];
       state.activeClassId = null;
@@ -2881,9 +2898,10 @@ if (inCastle) {
       $('gradeInput').value = '';
       lastSyncedClasses = [];
       lastRemoteSyncError = null;
+      remoteSyncRequested = false;
       saveLocalOnly();
       render();
-      showToast(count === 1 ? 'Classe eliminata da Supabase. Il Castello è vuoto.' : 'Tutte le classi sono state eliminate da Supabase. Il Castello è vuoto.');
+      showToast(count === 1 ? 'Classe eliminata e verifica database completata.' : 'Tutte le classi sono state eliminate e la verifica database è completata.');
     } catch(error) {
       console.error('Eliminazione classi Supabase non riuscita:', error);
       showToast('ELIMINAZIONE NON COMPLETATA: ' + (error && error.message ? error.message : 'errore Supabase sconosciuto'));
