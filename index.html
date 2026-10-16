@@ -1931,8 +1931,10 @@ Vuoi procedere?`)) return;
       $('activeClassSummary').innerHTML = '<strong>🏰 Castello</strong> <span class="class-status">Nessuna classe presente</span><br><span style="font-size:13px">Puoi creare una nuova classe oppure ripristinare un backup JSON.</span>';
     }
     const finalYear = c ? isFinalYearClass(c.name) : false;
+    const canPromoteClass = Boolean(c && !c.archived && role === 'teacher' && teacherView === 'class');
     $('promoteClassBtn').textContent = finalYear ? '🏁 Concludi percorso' : '🎓 Promuovi alla classe successiva';
-    $('promoteClassBtn').disabled = !c || activeIsArchived() || (role === 'teacher' && teacherView === 'castle');
+    $('promoteClassBtn').style.display = canPromoteClass ? 'inline-block' : 'none';
+    $('promoteClassBtn').disabled = !canPromoteClass;
     $('promoteClassBtn').title = !c ? 'Crea prima una classe.' : activeIsArchived() ? 'La classe archiviata è in sola consultazione.' : finalYear ? 'Conclude il percorso e archivia la classe quinta.' : 'Crea la classe dell’anno successivo conservando le Casate.';
     const deleteArchivedBtn = $('deleteArchivedClassBtn');
     if(deleteArchivedBtn) deleteArchivedBtn.onclick = deleteArchivedClass;
