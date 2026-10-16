@@ -1639,13 +1639,17 @@ input, select, .authbox input {
       } else {
         const registeredAndClean = Boolean(existing && !cupWasChanged);
         archiveTrigger.textContent = existing && cupWasChanged ? 'Aggiorna l’iscrizione' : '🏆 Albo d’oro';
-        archiveTrigger.disabled = houseCupArchiveBusy || !canRecord || registeredAndClean;
-        archiveTrigger.title = registeredAndClean
-          ? 'La classe è già iscritta e non ci sono modifiche da salvare.'
-          : !houseCupArchiveLoaded ? 'I dati dell’Albo d’oro verranno verificati prima della registrazione.'
-          : !canRecord ? 'Completa lo smistamento di tutti gli studenti prima di registrare la classe.'
-          : existing ? 'I punteggi sono cambiati: aggiorna l’iscrizione all’Albo d’oro.'
-          : 'Iscrivi i punteggi attuali della classe all’Albo d’oro.';
+        // Non consentire la registrazione finché l'archivio remoto non è stato
+        // verificato: dopo un nuovo accesso la memoria locale parte vuota e
+        // altrimenti una Coppa già registrata sembrerebbe ancora registrabile.
+        archiveTrigger.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || registeredAndClean;
+        archiveTrigger.title = !houseCupArchiveLoaded
+          ? 'Verifica delle registrazioni dell’Albo d’oro in corso o non riuscita.'
+          : registeredAndClean
+            ? 'La classe è già iscritta e non ci sono modifiche da salvare.'
+            : !canRecord ? 'Completa lo smistamento di tutti gli studenti prima di registrare la classe.'
+            : existing ? 'I punteggi sono cambiati: aggiorna l’iscrizione all’Albo d’oro.'
+            : 'Iscrivi i punteggi attuali della classe all’Albo d’oro.';
       }
     }
     if(actions) actions.style.display = role === 'teacher' && !inCastle ? 'flex' : 'none';
@@ -2385,7 +2389,19 @@ if (inCastle) {
       $('password').value = '';
       $('authBox').style.display = 'none';
       setRole('teacher');
-      showToast('Accesso docente effettuato. Dati caricati da Supabase.');
+      // Carica subito l'archivio al login, non soltanto quando si apre la
+      // sezione Albo d'oro: serve a riconoscere le classi già registrate anche
+      // dopo aver chiuso e riaperto la pagina.
+      let archiveReady = true;
+      try {
+        await loadHouseCupArchive();
+      } catch(archiveError) {
+        archiveReady = false;
+        console.error('Impossibile verificare l’Albo d’oro al login docente:', archiveError);
+      }
+      showToast(archiveReady
+        ? 'Accesso docente effettuato. Dati e Albo d’oro caricati da Supabase.'
+        : 'Accesso effettuato, ma non è stato possibile verificare l’Albo d’oro. Il pulsante resterà disabilitato.');
     } catch(err) {
       console.error('Errore accesso Supabase:', err);
       // Se l'autenticazione era riuscita ma il caricamento dei dati è fallito,
