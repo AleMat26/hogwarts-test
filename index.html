@@ -1639,17 +1639,13 @@ input, select, .authbox input {
       } else {
         const registeredAndClean = Boolean(existing && !cupWasChanged);
         archiveTrigger.textContent = existing && cupWasChanged ? 'Aggiorna l’iscrizione' : '🏆 Albo d’oro';
-        // Non consentire la registrazione finché l'archivio remoto non è stato
-        // verificato: dopo un nuovo accesso la memoria locale parte vuota e
-        // altrimenti una Coppa già registrata sembrerebbe ancora registrabile.
-        archiveTrigger.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || registeredAndClean;
-        archiveTrigger.title = !houseCupArchiveLoaded
-          ? 'Verifica delle registrazioni dell’Albo d’oro in corso o non riuscita.'
-          : registeredAndClean
-            ? 'La classe è già iscritta e non ci sono modifiche da salvare.'
-            : !canRecord ? 'Completa lo smistamento di tutti gli studenti prima di registrare la classe.'
-            : existing ? 'I punteggi sono cambiati: aggiorna l’iscrizione all’Albo d’oro.'
-            : 'Iscrivi i punteggi attuali della classe all’Albo d’oro.';
+        archiveTrigger.disabled = houseCupArchiveBusy || !canRecord || registeredAndClean;
+        archiveTrigger.title = registeredAndClean
+          ? 'La classe è già iscritta e non ci sono modifiche da salvare.'
+          : !houseCupArchiveLoaded ? 'I dati dell’Albo d’oro verranno verificati prima della registrazione.'
+          : !canRecord ? 'Completa lo smistamento di tutti gli studenti prima di registrare la classe.'
+          : existing ? 'I punteggi sono cambiati: aggiorna l’iscrizione all’Albo d’oro.'
+          : 'Iscrivi i punteggi attuali della classe all’Albo d’oro.';
       }
     }
     if(actions) actions.style.display = role === 'teacher' && !inCastle ? 'flex' : 'none';
@@ -2389,19 +2385,7 @@ if (inCastle) {
       $('password').value = '';
       $('authBox').style.display = 'none';
       setRole('teacher');
-      // Carica subito l'archivio al login, non soltanto quando si apre la
-      // sezione Albo d'oro: serve a riconoscere le classi già registrate anche
-      // dopo aver chiuso e riaperto la pagina.
-      let archiveReady = true;
-      try {
-        await loadHouseCupArchive();
-      } catch(archiveError) {
-        archiveReady = false;
-        console.error('Impossibile verificare l’Albo d’oro al login docente:', archiveError);
-      }
-      showToast(archiveReady
-        ? 'Accesso docente effettuato. Dati e Albo d’oro caricati da Supabase.'
-        : 'Accesso effettuato, ma non è stato possibile verificare l’Albo d’oro. Il pulsante resterà disabilitato.');
+      showToast('Accesso docente effettuato. Dati caricati da Supabase.');
     } catch(err) {
       console.error('Errore accesso Supabase:', err);
       // Se l'autenticazione era riuscita ma il caricamento dei dati è fallito,
@@ -3642,12 +3626,22 @@ $('reviewHousesBtn').onclick = () => {
     downloadBlob(makeZip(files), 'hogwarts-esportazione-completa-' + new Date().toISOString().slice(0,10) + '.xlsx');
   }
   $('exportBtn').onclick = () => { try { exportExcel(); showToast('Esportazione Excel avviata.'); } catch(err) { console.error(err); alert('Esportazione Excel non riuscita. Riprova.'); } };
-  function makeBackupSnapshot() {
+  function makeBackupSnapshot(archiveRecords) {
     // Serializzare e rileggere crea una copia indipendente: il backup non punta allo stato vivo dell'app.
     const snapshot = JSON.parse(JSON.stringify(state));
+    const archiveSnapshot = (Array.isArray(archiveRecords) ? archiveRecords : []).map(record => ({
+      class_name: String(record.class_name || ''),
+      school_year: String(record.school_year || ''),
+      gryffindor_points: Number(record.gryffindor_points) || 0,
+      hufflepuff_points: Number(record.hufflepuff_points) || 0,
+      ravenclaw_points: Number(record.ravenclaw_points) || 0,
+      slytherin_points: Number(record.slytherin_points) || 0,
+      winner_house: String(record.winner_house || ''),
+      recorded_at: record.recorded_at || null
+    }));
     return {
       format: 'hogwarts-torneo-backup',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       app: 'Hogwarts – Coppa delle Casate',
       summary: {
@@ -3655,9 +3649,11 @@ $('reviewHousesBtn').onclick = () => {
         activeClasses: snapshot.classes.filter(c => !c.archived).length,
         archivedClasses: snapshot.classes.filter(c => c.archived).length,
         students: snapshot.classes.reduce((n, c) => n + c.students.length, 0),
-        historyEntries: snapshot.classes.reduce((n, c) => n + c.students.reduce((m, st) => m + st.history.length, 0), 0)
+        historyEntries: snapshot.classes.reduce((n, c) => n + c.students.reduce((m, st) => m + st.history.length, 0), 0),
+        houseCupArchiveRecords: archiveSnapshot.length
       },
-      state: snapshot
+      state: snapshot,
+      houseCupArchive: archiveSnapshot
     };
   }
   function validateBackupState(raw) {
@@ -3766,14 +3762,30 @@ $('reviewHousesBtn').onclick = () => {
     const studentClientIds = new Set();
     for(const st of raw.students) validateStudent(st, studentIds, studentClientIds);
   }
-  $('backupBtn').onclick = () => {
+  $('backupBtn').onclick = async () => {
+    const backupButton = $('backupBtn');
+    const originalLabel = backupButton.textContent;
+    backupButton.disabled = true;
+    backupButton.textContent = '⏳ Preparazione backup…';
     try {
-      const backup = makeBackupSnapshot();
+      if(!supabase || !supabaseUser || role !== 'teacher') throw new Error('Accedi in modalità docente per creare un backup completo, incluso l’Albo d’oro.');
+      const { data: archiveRecords, error: archiveError } = await supabase.from('house_cup_archive')
+        .select('class_name,school_year,gryffindor_points,hufflepuff_points,ravenclaw_points,slytherin_points,winner_house,recorded_at')
+        .eq('teacher_id', supabaseUser.id)
+        .order('recorded_at', { ascending: false });
+      if(archiveError) throw new Error('Impossibile includere l’Albo d’oro nel backup: ' + archiveError.message);
+      const backup = makeBackupSnapshot(archiveRecords || []);
       const contents = JSON.stringify(backup, null, 2);
       if(!contents || contents.length < 2) throw new Error('Backup vuoto.');
       downloadBlob(new Blob([contents], { type: 'application/json;charset=utf-8' }), 'hogwarts-backup-' + new Date().toISOString().slice(0,10) + '.json');
-      showToast('Backup JSON completo creato. Conserva il file in un luogo sicuro.');
-    } catch(err) { console.error(err); alert('Backup non riuscito. I dati nel browser non sono stati modificati. Riprova.'); }
+      showToast('Backup JSON creato: classi, studenti, voti e Albo d’oro inclusi.');
+    } catch(err) {
+      console.error(err);
+      alert('Backup non riuscito: ' + (err && err.message ? err.message : 'errore sconosciuto') + '\n\nNessun dato è stato modificato.');
+    } finally {
+      backupButton.disabled = false;
+      backupButton.textContent = originalLabel;
+    }
   };
   $('restoreBtn').onclick = () => $('restoreFile').click();
   $('restoreFile').onchange = async () => {
@@ -3784,23 +3796,51 @@ $('reviewHousesBtn').onclick = () => {
       if(file.size > 10 * 1024 * 1024) throw new Error('Il backup supera il limite di 10 MB.');
       const data = JSON.parse(await file.text());
       let restored;
+      let restoredHouseCupArchive = null;
       if(data && data.format === 'hogwarts-torneo-backup') {
-        if(![1,2].includes(data.version)) throw new Error('Versione del backup non supportata.');
+        if(![1,2,3].includes(data.version)) throw new Error('Versione del backup non supportata.');
         if(!data.state) throw new Error('Il backup non contiene i dati.');
         restored = data.state;
+        if(data.version >= 3) {
+          if(!Array.isArray(data.houseCupArchive)) throw new Error('Il backup dichiara di includere l’Albo d’oro ma l’elenco non è valido.');
+          if(data.houseCupArchive.length > 10000) throw new Error('Il backup contiene troppe registrazioni dell’Albo d’oro.');
+          const validWinners = ['Grifondoro','Tassorosso','Corvonero','Serpeverde','EX_AEQUO'];
+          restoredHouseCupArchive = data.houseCupArchive.map((record, index) => {
+            if(!record || typeof record !== 'object' || Array.isArray(record)) throw new Error('Registrazione Albo d’oro non valida (' + (index + 1) + ').');
+            if(typeof record.class_name !== 'string' || !record.class_name.trim() || record.class_name.length > 100) throw new Error('Nome classe non valido nell’Albo d’oro.');
+            if(typeof record.school_year !== 'string' || !record.school_year.trim() || record.school_year.length > 40) throw new Error('Anno scolastico non valido nell’Albo d’oro.');
+            for(const field of ['gryffindor_points','hufflepuff_points','ravenclaw_points','slytherin_points']) {
+              if(!Number.isFinite(Number(record[field]))) throw new Error('Punteggio non valido nell’Albo d’oro.');
+            }
+            if(!validWinners.includes(record.winner_house)) throw new Error('Vincitrice non valida nell’Albo d’oro.');
+            return {
+              class_name: record.class_name.trim(), school_year: record.school_year.trim(),
+              gryffindor_points: Number(record.gryffindor_points), hufflepuff_points: Number(record.hufflepuff_points),
+              ravenclaw_points: Number(record.ravenclaw_points), slytherin_points: Number(record.slytherin_points),
+              winner_house: record.winner_house,
+              recorded_at: typeof record.recorded_at === 'string' && !Number.isNaN(Date.parse(record.recorded_at)) ? record.recorded_at : new Date().toISOString()
+            };
+          });
+        }
       } else {
         // Accetta anche i vecchi file JSON esportati prima dell'introduzione del formato versionato.
         restored = data;
       }
       validateBackupState(restored);
+      if(restoredHouseCupArchive !== null && !(supabaseUser && role === 'teacher')) {
+        throw new Error('Per ripristinare questo backup completo, incluso l’Albo d’oro, accedi prima in modalità docente e poi ripeti il ripristino. Nessun dato è stato modificato.');
+      }
       const candidate = normalizeState(restored);
       if(!candidate.classes || !candidate.classes.length) throw new Error('Il backup non contiene classi ripristinabili.');
       const classCount = candidate.classes.length;
       const studentCount = candidate.classes.reduce((n, c) => n + c.students.length, 0);
+      const archiveSummary = restoredHouseCupArchive === null
+        ? '\n\nQuesto è un backup precedente e non contiene l’Albo d’oro: le registrazioni dell’Albo non verranno ripristinate da questo file.'
+        : '\nInclude anche ' + restoredHouseCupArchive.length + ' registrazioni dell’Albo d’oro.';
       const cloudWarning = supabaseUser && role === 'teacher'
-        ? '\n\nSe sei autenticato, il ripristino verrà anche sincronizzato con Supabase e potrà sostituire le classi e i dati cloud del tuo account che non sono presenti nel backup.'
-        : '';
-      if(!confirm('Stai per ripristinare un backup con ' + classCount + ' class' + (classCount === 1 ? 'e' : 'i') + ' e ' + studentCount + ' student' + (studentCount === 1 ? 'e' : 'i') + '.\n\nI dati attualmente presenti in questo browser saranno sostituiti.' + cloudWarning + '\n\nPrima di procedere, assicurati di avere una copia di backup dei dati correnti. Vuoi continuare?')) return;
+        ? '\n\nIl ripristino sincronizzerà classi e dati con Supabase' + (restoredHouseCupArchive !== null ? ', sostituendo anche le registrazioni dell’Albo d’oro di questo account' : '') + '.'
+        : (restoredHouseCupArchive !== null ? '\n\nPer ripristinare anche l’Albo d’oro devi essere autenticato in modalità docente.' : '');
+      if(!confirm('Stai per ripristinare un backup con ' + classCount + ' class' + (classCount === 1 ? 'e' : 'i') + ' e ' + studentCount + ' student' + (studentCount === 1 ? 'e' : 'i') + '.' + archiveSummary + '\n\nI dati attualmente presenti in questo browser saranno sostituiti.' + cloudWarning + '\n\nPrima di procedere, assicurati di avere una copia di backup dei dati correnti. Vuoi continuare?')) return;
       const restoreButton = $('restoreBtn');
       const restoreButtonLabel = restoreButton.textContent;
       restoreButton.disabled = true;
@@ -3833,10 +3873,25 @@ $('reviewHousesBtn').onclick = () => {
         lastSyncedClasses = null;
         try {
           await syncTeacherData();
+          if(restoredHouseCupArchive !== null) {
+            if(!supabase) throw new Error('Connessione Supabase non disponibile per ripristinare l’Albo d’oro.');
+            const { error: deleteArchiveError } = await supabase.from('house_cup_archive')
+              .delete().eq('teacher_id', supabaseUser.id);
+            if(deleteArchiveError) throw new Error('Impossibile sostituire le registrazioni correnti dell’Albo d’oro: ' + deleteArchiveError.message);
+            if(restoredHouseCupArchive.length) {
+              const payload = restoredHouseCupArchive.map(record => ({ ...record, teacher_id: supabaseUser.id }));
+              const { error: insertArchiveError } = await supabase.from('house_cup_archive').insert(payload);
+              if(insertArchiveError) throw new Error('Le classi sono state ripristinate, ma non è stato possibile reimportare l’Albo d’oro: ' + insertArchiveError.message);
+            }
+            houseCupArchiveRecords = [];
+            houseCupArchiveLoaded = false;
+            houseCupDirtyKeys.clear();
+            await loadHouseCupArchive();
+          }
           saveLocalOnly();
           lastRemoteSyncError = null;
           render(); renderClassManager();
-          showToast('Backup ripristinato e sincronizzato con Supabase.');
+          showToast(restoredHouseCupArchive !== null ? 'Backup ripristinato e sincronizzato: incluse le registrazioni dell’Albo d’oro.' : 'Backup ripristinato e sincronizzato con Supabase.');
         } catch(syncError) {
           lastRemoteSyncError = syncError;
           console.error('Ripristino locale riuscito, ma sincronizzazione Supabase non riuscita:', syncError);
@@ -3845,6 +3900,9 @@ $('reviewHousesBtn').onclick = () => {
           return;
         }
       } else {
+        if(restoredHouseCupArchive !== null) {
+          throw new Error('Le classi sono state caricate nel browser, ma per ripristinare l’Albo d’oro devi accedere alla modalità docente e ripetere il ripristino del backup.');
+        }
         showToast('Backup ripristinato nel browser. Per renderlo disponibile sugli altri dispositivi, accedi alla modalità docente e sincronizzalo.');
       }
     } catch(err) {
