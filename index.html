@@ -1637,7 +1637,7 @@ input, select, .authbox input {
       } else {
         const registeredAndClean = Boolean(existing && !cupWasChanged);
         archiveTrigger.textContent = existing && cupWasChanged ? 'Aggiorna l’iscrizione' : '🏆 Albo d’oro';
-        archiveTrigger.disabled = houseCupArchiveBusy || !canRecord || registeredAndClean;
+        archiveTrigger.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || registeredAndClean;
         archiveTrigger.title = registeredAndClean
           ? 'La classe è già iscritta e non ci sono modifiche da salvare.'
           : !houseCupArchiveLoaded ? 'I dati dell’Albo d’oro verranno verificati prima della registrazione.'
@@ -2529,6 +2529,15 @@ if (inCastle) {
     if(!state.classes.length){ state.className = 'Castello'; state.students = []; state.activeClassId = null; }
     lastSyncedClasses = JSON.parse(JSON.stringify(state.classes));
     saveLocalOnly();
+    // Carica l'Albo d'oro al login, così lo stato del pulsante nella singola
+    // classe riflette le registrazioni persistenti anche dopo aver riaperto la pagina.
+    // Un errore dell'archivio non deve impedire l'accesso alla modalità docente.
+    try {
+      await loadHouseCupArchive();
+    } catch(archiveLoadError) {
+      console.error('Impossibile verificare l’Albo d’oro al login:', archiveLoadError);
+      houseCupArchiveLoaded = false;
+    }
     render();
   }
   function saveLocalOnly(){
