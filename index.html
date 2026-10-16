@@ -1635,8 +1635,10 @@ input, select, .authbox input {
         archiveTrigger.disabled = false;
         archiveTrigger.title = 'Apri l’Albo d’oro completo delle classi.';
       } else {
-        const registeredAndClean = Boolean(existing && !cupWasChanged);
-        archiveTrigger.textContent = existing && cupWasChanged ? 'Aggiorna l’iscrizione' : '🏆 Albo d’oro';
+        // Dopo un nuovo accesso, houseCupDirtyKeys è vuoto: confronta sempre
+        // i punteggi correnti con la fotografia salvata nell'Albo d'oro.
+        const registeredAndClean = Boolean(existing && existingMatchesCurrent && !cupWasChanged);
+        archiveTrigger.textContent = existing && (!existingMatchesCurrent || cupWasChanged) ? 'Aggiorna l’iscrizione' : '🏆 Albo d’oro';
         archiveTrigger.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || registeredAndClean;
         archiveTrigger.title = registeredAndClean
           ? 'La classe è già iscritta e non ci sono modifiche da salvare.'
