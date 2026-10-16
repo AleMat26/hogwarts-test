@@ -1496,14 +1496,14 @@ input, select, .authbox input {
       try {
         const { data: archiveRows, error: archiveError } = await supabase
           .from('house_cup_archive').select('id').limit(1);
-        // Supabase può restituire [] senza errore quando RLS nasconde le righe
-        // all'utente anonimo. Quindi una lista vuota non dimostra che l'Albo sia vuoto.
-        // Manteniamo disponibile il pulsante pubblico; per nasconderlo in modo
-        // affidabile serve una RPC pubblica che restituisca soltanto un booleano.
-        publicHasAlboRecords = true;
-      } catch (_) {
-        // Stato non verificabile in modalità pubblica: non nascondere l'accesso.
-        publicHasAlboRecords = true;
+        if(archiveError) throw archiveError;
+        // Il pulsante pubblico compare soltanto se la query anonima vede almeno
+        // una registrazione. La policy SELECT pubblica deve consentire questa
+        // verifica (anche solo dell'id); altrimenti serve una RPC dedicata.
+        publicHasAlboRecords = Array.isArray(archiveRows) && archiveRows.length > 0;
+      } catch (archiveCheckError) {
+        console.error('Impossibile verificare le registrazioni pubbliche dell’Albo d’oro:', archiveCheckError);
+        publicHasAlboRecords = false;
       }
       const mappedClasses = (classes || []).map(c => ({
         id: String(c.class_id), dbId: String(c.class_id), clientId: String(c.class_id), name: c.class_name,
@@ -1881,25 +1881,24 @@ Vuoi procedere?`)) return;
         .select('id');
       if(error) throw error;
       const deletedCount = Array.isArray(data) ? data.length : 0;
-      // Supabase/PostgREST può restituire zero righe senza errore quando le policy
-      // RLS impediscono la DELETE: non dobbiamo fingere che l'archivio sia vuoto.
-      if(deletedCount !== count) {
+      if(deletedCount !== count){
+        // Non dichiarare lo svuotamento riuscito se RLS ha bloccato la DELETE
+        // o se la risposta non conferma l'eliminazione di tutte le righe.
         houseCupArchiveLoaded = false;
         try { await loadHouseCupArchive(); } catch(refreshError) {
           console.error('Errore aggiornamento Albo d’oro dopo cancellazione incompleta:', refreshError);
         }
-        throw new Error(`Cancellate ${deletedCount} registrazioni su ${count}. La policy DELETE/RLS di house_cup_archive potrebbe impedire la cancellazione.`);
+        throw new Error(`Cancellate ${deletedCount} registrazioni su ${count}. Verificare la policy DELETE/RLS di house_cup_archive in Supabase.`);
       }
       houseCupArchiveRecords = [];
       houseCupArchiveLoaded = true;
       houseCupDirtyKeys.clear();
       houseCupLastAction.clear();
       renderHouseCupArchive();
-      showToast(`Albo d’oro svuotato: eliminate ${deletedCount} registrazioni. Classi e punteggi invariati.`);
+      showToast('Albo d’oro svuotato. Le classi e i loro punteggi non sono stati modificati.');
     } catch(error) {
       console.error('Errore svuotamento Albo d’oro:', error);
-      const detail = error && error.message ? error.message : 'Errore sconosciuto';
-      showToast(`Svuotamento non riuscito. ${detail}`);
+      showToast(error && error.message ? 'Svuotamento non riuscito: ' + error.message : 'Svuotamento non riuscito: verifica le policy DELETE della tabella house_cup_archive in Supabase.');
     } finally {
       houseCupArchiveBusy = false;
       renderHouseCupArchive();
