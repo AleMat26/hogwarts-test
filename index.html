@@ -990,6 +990,9 @@ input, select, .authbox input {
 #houseCupArchivePanel .house-cup-record-score.house-score-r strong { color: #a9d0ff !important; }
 #houseCupArchivePanel .house-cup-record-score.house-score-s strong { color: #a5e0b4 !important; }
 .house-cup-archive-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 16px; }
+.house-cup-year-filter { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 16px; padding:12px 14px; border:1px solid rgba(226,194,122,.25); border-radius:12px; background:rgba(255,255,255,.025); }
+.house-cup-year-filter label { color:var(--text); font:600 14px/1.4 system-ui,sans-serif; }
+.house-cup-year-filter select { min-width:190px; max-width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:9px; background:var(--card); color:var(--text); font:14px system-ui,sans-serif; }
 .house-cup-archive-note { color:var(--muted); font:13px/1.5 system-ui,sans-serif; }
 @media(max-width:620px) { .house-cup-record-scores { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; } .house-cup-record-score { padding:7px 8px; font:12px system-ui,sans-serif; gap:6px; } .house-cup-record-score span, .house-cup-record-score strong { font-size:12px; } }
 
@@ -1134,6 +1137,10 @@ input, select, .authbox input {
     <p class="house-cup-archive-note">Qui vengono conservati i risultati finali registrati manualmente. Le Coppe salvate restano disponibili anche se la classe viene azzerata o eliminata.</p>
     <div id="houseCupArchiveResetActions" style="display:none;margin:0 0 14px">
       <button type="button" class="btn danger" id="resetHouseCupArchiveBtn">🗑️ Svuota completamente l’Albo d’oro</button>
+    </div>
+    <div class="house-cup-year-filter" id="houseCupYearFilter" style="display:none">
+      <label for="houseCupArchiveYearSelect">Anno scolastico da visualizzare</label>
+      <select id="houseCupArchiveYearSelect" aria-label="Filtra l’Albo d’oro per anno scolastico"></select>
     </div>
     <div class="house-cup-archive-actions">
       <button type="button" class="btn primary" id="recordHouseCupBtn">＋ Registra la Coppa della classe selezionata</button>
@@ -1346,6 +1353,8 @@ input, select, .authbox input {
   let houseCupArchiveRecords = [];
   let houseCupArchiveLoaded = false;
   let houseCupArchiveBusy = false;
+  // Anno selezionato nell'Albo: null indica il più recente al primo caricamento.
+  let selectedHouseCupYear = null;
   // La homepage mostra l'accesso all'Albo d'oro solo se esiste almeno una Coppa registrata.
   let publicHasAlboRecords = false;
   let publicArchiveView = false;
@@ -1670,14 +1679,31 @@ input, select, .authbox input {
     // Nel contesto di una classe si mostra esclusivamente la Coppa di quella
     // specifica classe e anno scolastico. Il Castello, che non è una classe,
     // mantiene invece la vista complessiva dell'Albo d'oro.
-    const visibleRecords = (showAllRecords
+    const yearFilter = $('houseCupYearFilter');
+    const yearSelect = $('houseCupArchiveYearSelect');
+    const allYears = [...new Set(houseCupArchiveRecords.map(record => String(record.school_year || '').trim()).filter(Boolean))]
+      .sort((a, b) => {
+        const yearA = Number((a.match(/\d{4}/) || [0])[0]);
+        const yearB = Number((b.match(/\d{4}/) || [0])[0]);
+        return yearB - yearA || b.localeCompare(a, 'it');
+      });
+    if(yearSelect){
+      if(allYears.length && selectedHouseCupYear !== '__all__' && !allYears.includes(selectedHouseCupYear)) selectedHouseCupYear = allYears[0];
+      yearSelect.innerHTML = '<option value="__all__">Tutti gli anni</option>' + allYears.map(year => `<option value="${esc(year)}">${esc(year)}</option>`).join('');
+      yearSelect.value = selectedHouseCupYear || '__all__';
+    }
+    if(yearFilter) yearFilter.style.display = showAllRecords && houseCupArchiveLoaded && allYears.length ? 'flex' : 'none';
+    const recordsBeforeYearFilter = (showAllRecords
       ? houseCupArchiveRecords
       : c
         ? houseCupArchiveRecords.filter(record => normalizeArchiveKey(record.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(record.school_year) === normalizeArchiveKey(c.schoolYear))
-        : []).slice().sort(compareHouseCupRecords);
+        : []);
+    const visibleRecords = (showAllRecords && selectedHouseCupYear && selectedHouseCupYear !== '__all__'
+      ? recordsBeforeYearFilter.filter(record => String(record.school_year || '').trim() === selectedHouseCupYear)
+      : recordsBeforeYearFilter).slice().sort(compareHouseCupRecords);
     if(!houseCupArchiveLoaded && !houseCupArchiveBusy){ status.textContent = 'Apri l’Albo d’oro per caricare le Coppe salvate.'; }
     else if(houseCupArchiveBusy){ status.textContent = 'Operazione in corso…'; }
-    else if(showAllRecords){ status.textContent = visibleRecords.length ? 'Coppe registrate: ' + visibleRecords.length : 'Non è ancora stata registrata nessuna Coppa.'; }
+    else if(showAllRecords){ status.textContent = visibleRecords.length ? 'Coppe visualizzate: ' + visibleRecords.length + (selectedHouseCupYear && selectedHouseCupYear !== '__all__' ? ' · anno scolastico ' + selectedHouseCupYear : '') : (houseCupArchiveRecords.length ? 'Nessuna Coppa registrata per l’anno scolastico selezionato.' : 'Non è ancora stata registrata nessuna Coppa.'); }
     else if(!c){ status.textContent = 'Seleziona una classe per consultare il suo Albo d’oro.'; }
     else { status.textContent = visibleRecords.length ? 'Coppa registrata per questa classe e questo anno scolastico.' : 'Non è ancora stata registrata una Coppa per questa classe e questo anno scolastico.'; }
     list.innerHTML = visibleRecords.map(record => {
@@ -3226,6 +3252,7 @@ $('promoteClassBtn').onclick = async () => {
   $('backFromPublicAlboBtn').onclick = closePublicHouseCupArchive;
   $('recordHouseCupBtn').onclick = recordHouseCup;
   $('resetHouseCupArchiveBtn').onclick = resetHouseCupArchive;
+  $('houseCupArchiveYearSelect').onchange = event => { selectedHouseCupYear = event.target.value || '__all__'; renderHouseCupArchive(); };
 
   // Nella consultazione pubblica, un tocco/click fuori dalla box dell'Albo
   // chiude la vista e ripristina la homepage del Castello. I click dentro la box
