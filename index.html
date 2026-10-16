@@ -1775,20 +1775,22 @@ input, select, .authbox input {
     }
   }
 
-  async function recordHouseCup(){
-    if(role !== 'teacher' || teacherView !== 'class' || houseCupArchiveBusy) return;
+  async function recordHouseCup(options = {}){
+    const fromArchiving = options.fromArchiving === true;
+    const skipConfirmation = options.skipConfirmation === true;
+    if(role !== 'teacher' || teacherView !== 'class' || houseCupArchiveBusy) return false;
     if(!houseCupArchiveLoaded){
       try { await loadHouseCupArchive(); }
       catch(error){
         console.error('Errore caricamento Albo d’oro:', error);
         showToast('Impossibile verificare l’Albo d’oro. Riprova tra poco.');
-        return;
+        return false;
       }
     }
     const c = activeClass();
-    if(!c || c.resetForDeletion || !c.students.length){ showToast('Seleziona una classe con studenti e risultati da registrare.'); return; }
-    if(!c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house))){ showToast('Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'); return; }
-    if(!supabase || !supabaseUser){ showToast('Accedi in modalità docente per registrare una Coppa.'); return; }
+    if(!c || c.resetForDeletion || !c.students.length){ showToast('Seleziona una classe con studenti e risultati da registrare.'); return false; }
+    if(!c.students.every(st => st.house && Object.prototype.hasOwnProperty.call(houses, st.house))){ showToast('Prima di registrare la Coppa, completa lo smistamento di tutti gli studenti.'); return false; }
+    if(!supabase || !supabaseUser){ showToast('Accedi in modalità docente per registrare una Coppa.'); return false; }
     const existing = houseCupArchiveRecords.find(r => normalizeArchiveKey(r.class_name) === normalizeArchiveKey(c.name) && normalizeArchiveKey(r.school_year) === normalizeArchiveKey(c.schoolYear));
     const totalsByHouse = totals(c.students);
     const existingMatchesCurrent = Boolean(existing &&
@@ -1799,15 +1801,15 @@ input, select, .authbox input {
     const cupWasChanged = houseCupDirtyKeys.has(houseCupKey(c));
     if(existingMatchesCurrent && !cupWasChanged){
       renderHouseCupArchive();
-      showToast('La Coppa è già aggiornata: i punteggi coincidono con quelli attuali.');
-      return;
+      if(!fromArchiving) showToast('La Coppa è già aggiornata: i punteggi coincidono con quelli attuali.');
+      return true;
     }
     const maxScore = Math.max(...Object.values(totalsByHouse));
     const winners = Object.entries(totalsByHouse).filter(([,value]) => value === maxScore).map(([key]) => houses[key]);
     const winner = winners.length > 1 ? 'EX_AEQUO' : winners[0];
     const winnerDescription = winners.length > 1 ? winners.join(', ') + ' (ex aequo)' : winners[0];
     const detail = `Classe: ${c.name} · ${c.schoolYear}\n\nGrifondoro: ${pointLabel(totalsByHouse.g)}\nTassorosso: ${pointLabel(totalsByHouse.t)}\nCorvonero: ${pointLabel(totalsByHouse.r)}\nSerpeverde: ${pointLabel(totalsByHouse.s)}\n\nVincitrice: ${winnerDescription}\n\n${existing ? 'La Coppa già registrata verrà aggiornata con questi risultati.' : 'Questa fotografia resterà nell’Albo d’oro anche se la classe verrà successivamente azzerata o eliminata.'}`;
-    if(!confirm((existing ? 'Vuoi aggiornare l’iscrizione all’Albo d’oro con questi dati?' : 'Vuoi iscrivere la classe all’Albo d’oro con questi dati?') + '\n\n' + detail)) return;
+    if(!skipConfirmation && !confirm((existing ? 'Vuoi aggiornare l’iscrizione all’Albo d’oro con questi dati?' : 'Vuoi iscrivere la classe all’Albo d’oro con questi dati?') + '\n\n' + detail)) return false;
     houseCupArchiveBusy = true;
     renderHouseCupArchive();
     try {
@@ -1838,10 +1840,12 @@ input, select, .authbox input {
       houseCupLastAction.set(houseCupKey(c), existing ? 'updated' : 'registered');
       houseCupArchiveLoaded = false;
       await loadHouseCupArchive();
-      showToast(existing ? 'Punteggi aggiornati nell’Albo d’oro.' : 'Classe iscritta all’Albo d’oro.');
+      if(!fromArchiving) showToast(existing ? 'Punteggi aggiornati nell’Albo d’oro.' : 'Classe iscritta all’Albo d’oro.');
+      return true;
     } catch(error) {
       console.error('Errore registrazione Coppa:', error);
       showToast(error.message && /Esiste già una Coppa/.test(error.message) ? error.message : 'Registrazione non riuscita. Verifica che la tabella e le policy Supabase siano state create correttamente.');
+      return false;
     } finally {
       houseCupArchiveBusy = false;
       renderHouseCupArchive();
@@ -1985,6 +1989,9 @@ if (inCastle) {
 
   function render(){
     renderPublicClassSelector();
+    // In modalità docente l'accesso all'Albo d'oro è disponibile soltanto dal Castello.
+    const teacherArchiveButton = $('houseCupArchiveBtn');
+    if(teacherArchiveButton) teacherArchiveButton.style.display = role === 'teacher' && teacherView === 'castle' ? 'inline-block' : 'none';
     // Mostra l'accesso all'Albo d'oro solo nella vista pubblica del Castello.
     updatePublicAlboVisibility();
     // In modalità docente i punteggi seguono esclusivamente la classe gestita.
@@ -3159,6 +3166,8 @@ $('promoteClassBtn').onclick = async () => {
     if(isFinalYearClass(current.name)){
       const confirmation = 'Vuoi concludere il percorso della classe ' + current.name + ' · ' + current.schoolYear + '?\n\nLa classe sarà archiviata in sola consultazione. Studenti, Casate, punteggi e storico saranno conservati nell’archivio. Non verrà creata una classe successiva.';
       if(!confirm(confirmation)) return;
+      const registerCup = confirm('Vuoi registrare anche la Coppa finale di ' + current.name + ' · ' + current.schoolYear + ' nell’Albo d’oro?\n\nLa registrazione conserverà i punteggi finali delle quattro Casate.');
+      const cupRegistered = registerCup ? await recordHouseCup({ skipConfirmation: true, fromArchiving: true }) : false;
       current.archived = true;
       if(publicClassId === current.id) {
         publicClassId = ALL_ACTIVE_CLASSES;
@@ -3170,7 +3179,7 @@ $('promoteClassBtn').onclick = async () => {
       } else {
         render();
       }
-      showToast('Percorso concluso: ' + current.name + ' è stata archiviata.');
+      if(!registerCup || cupRegistered) showToast('Percorso concluso: ' + current.name + ' è stata archiviata.' + (cupRegistered ? ' Coppa salvata nell’Albo d’oro.' : ''));
       return;
     }
     const suggestedName = nextClassName(current.name) || current.name;
@@ -3189,6 +3198,8 @@ $('promoteClassBtn').onclick = async () => {
       alert('Esiste già una classe con questo nome nello stesso anno scolastico.'); return;
     }
     if(!confirm('Creare ' + cleanName + ' · ' + cleanYear + ' copiando i nomi e le Casate di ' + current.name + '? I punteggi e gli storici del nuovo anno partiranno da zero. La classe attuale resterà nell’archivio e non sarà modificabile.')) return;
+    const registerCup = confirm('Vuoi registrare anche la Coppa finale di ' + current.name + ' · ' + current.schoolYear + ' nell’Albo d’oro?\n\nLa registrazione conserverà i punteggi finali delle quattro Casate.');
+    const cupRegistered = registerCup ? await recordHouseCup({ skipConfirmation: true, fromArchiving: true }) : false;
     save();
     current.archived = true;
     if(publicClassId === current.id) {
@@ -3201,7 +3212,7 @@ $('promoteClassBtn').onclick = async () => {
     const id = nextUniqueClassId();
     state.classes.push({ id, clientId: id, name: cleanName, schoolYear: cleanYear, students: promotedStudents, nextId: promotedStudents.length + 1, archived: false, resetForDeletion: false });
     switchClass(id);
-    showToast('Nuovo anno creato: Casate conservate, punteggi azzerati.');
+    if(!registerCup || cupRegistered) showToast('Nuovo anno creato: Casate conservate, punteggi azzerati.' + (cupRegistered ? ' Coppa della classe precedente salvata nell’Albo d’oro.' : ''));
   };
 
   $('houseCupArchiveBtn').onclick = () => {
