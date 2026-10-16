@@ -2565,9 +2565,19 @@ if (inCastle) {
           // e la conclusione della sincronizzazione.
           if(remoteSyncRequested) queueRemoteSync();
         }
-      }, 35);
+      }, 0);
     });
   }
+  // Evita che la chiusura della scheda interrompa una sincronizzazione ancora in corso.
+  // Il salvataggio parte subito; se il browser sta ancora inviando modifiche a Supabase,
+  // chiede conferma prima di lasciare la pagina.
+  window.addEventListener('beforeunload', event => {
+    const syncPending = Boolean(remoteSyncTimer || remoteSyncRunning || remoteSyncRequested);
+    if(role === 'teacher' && supabaseUser && syncPending){
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
   async function syncTeacherDataFull(){
     if(!supabase || !supabaseUser) return;
     const { data: currentClasses, error: readClassesError } = await supabase.from('classes').select('id,client_id').eq('teacher_id', supabaseUser.id);
