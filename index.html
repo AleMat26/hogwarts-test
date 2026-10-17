@@ -1963,7 +1963,7 @@ input, select, .authbox input {
       st.history=Array.isArray(st.history)?st.history:[];
       st.history.push({
         id:timestamp+count, date:new Date().toISOString(), grade:entry.grade, points:p,
-        source:'Importazione Excel', testName:result.testName
+        source:'Importazione Excel', testName:result.testName, reference:result.testName
       });
       count++; totalPoints+=p;
     }
@@ -2676,12 +2676,13 @@ if (inCastle) {
     let s = state.students.find(x => String(x.id) === String($('pointsStudent').value));
     $('gradeHistory').innerHTML = s ? 
       `<h4 style="margin:0 0 10px">Storico di ${esc(s.name)}</h4>` +
-      ((s.history || []).slice().reverse().map(h => 
-        `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid #3f3b32;border-radius:10px">
-          <span>${esc(h.grade === 'Encomio speciale' ? '✨ Bonus' : h.grade === 'Malus' ? '⚖️ Malus' : 'Voto ' + h.grade)} → ${esc(h.points >= 0 ? '+' : '')}${esc(pointLabel(h.points))}</span>
-          <button type="button" class="del" data-id="${esc(h.id)}" title="Rimuovi voce" ${activeIsArchived() ? 'disabled' : ''} style="border:0;background:transparent;cursor:pointer;font-size:18px">🗑️</button>
-        </div>`
-      ).join('') || '<div>Nessun voto registrato.</div>') : '';
+      ((s.history || []).slice().reverse().map(h => {
+        const reference = String(h.reference || h.testName || '').trim();
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid #3f3b32;border-radius:10px">
+          <span style="min-width:0"><span>${esc(h.grade === 'Encomio speciale' ? '✨ Bonus' : h.grade === 'Malus' ? '⚖️ Malus' : 'Voto ' + h.grade)} → ${esc(h.points >= 0 ? '+' : '')}${esc(pointLabel(h.points))}</span>${reference ? `<span style="display:block;margin-top:4px;font-size:12px;opacity:.82">Verifica: ${esc(reference)}</span>` : ''}</span>
+          <button type="button" class="del" data-id="${esc(h.id)}" title="Rimuovi voce" ${activeIsArchived() ? 'disabled' : ''} style="flex-shrink:0;border:0;background:transparent;cursor:pointer;font-size:18px">🗑️</button>
+        </div>`;
+      }).join('') || '<div>Nessun voto registrato.</div>') : '';
   }
 
   function setRole(r){
@@ -2984,7 +2985,7 @@ if (inCastle) {
     const studentIds = studentRows.map(s => s.id);
     let gradeRows = [];
     if(studentIds.length){
-      const { data, error } = await supabase.from('grades').select('id,student_id,history_id,grade,points,entry_type,created_at').in('student_id', studentIds).order('created_at');
+      const { data, error } = await supabase.from('grades').select('id,student_id,history_id,grade,points,entry_type,reference,created_at').in('student_id', studentIds).order('created_at');
       if(error) throw error;
       gradeRows = data || [];
     }
@@ -2994,7 +2995,7 @@ if (inCastle) {
       gradesByStudent.get(String(h.student_id)).push({
         id: h.history_id || String(h.id), date: h.created_at,
         grade: h.entry_type === 'encomio' ? 'Encomio speciale' : h.entry_type === 'malus' ? 'Malus' : h.grade,
-        points: Number(h.points) || 0, dbId: h.id
+        points: Number(h.points) || 0, reference: h.reference || '', dbId: h.id
       });
     }
     const studentsByClass = new Map();
@@ -3120,7 +3121,7 @@ if (inCastle) {
           const hid = String(h.id);
           const entryType = h.grade === 'Encomio speciale' ? 'encomio' : h.grade === 'Malus' ? 'malus' : 'voto';
           const numericGrade = entryType === 'voto' && Number.isFinite(Number(h.grade)) ? Number(h.grade) : null;
-          const gradePayload = { student_id: st.dbId, history_id: hid, grade: numericGrade, points: Number(h.points) || 0, entry_type: entryType };
+          const gradePayload = { student_id: st.dbId, history_id: hid, grade: numericGrade, points: Number(h.points) || 0, entry_type: entryType, reference: String(h.reference || h.testName || '').trim() || null };
           const found = existingGradeByHistory.get(hid);
           const gr = found
             ? await supabase.from('grades').update(gradePayload).eq('id', found.id).select('id').single()
@@ -3148,7 +3149,7 @@ if (inCastle) {
   const classClientKey = c => String(c.clientId || c.id);
   const studentClientKey = st => String(st.clientId || st.id);
   const historyClientKey = h => String(h.id);
-  const historyPayload = h => ({ grade: h.grade === 'Encomio speciale' || h.grade === 'Malus' ? null : (Number.isFinite(Number(h.grade)) ? Number(h.grade) : null), points: Number(h.points) || 0, entry_type: h.grade === 'Encomio speciale' ? 'encomio' : h.grade === 'Malus' ? 'malus' : 'voto' });
+  const historyPayload = h => ({ grade: h.grade === 'Encomio speciale' || h.grade === 'Malus' ? null : (Number.isFinite(Number(h.grade)) ? Number(h.grade) : null), points: Number(h.points) || 0, entry_type: h.grade === 'Encomio speciale' ? 'encomio' : h.grade === 'Malus' ? 'malus' : 'voto', reference: String(h.reference || h.testName || '').trim() || null });
   const sameClassFields = (a,b) => a && b && a.name === b.name && (a.schoolYear || DEFAULT_YEAR) === (b.schoolYear || DEFAULT_YEAR) && Boolean(a.archived) === Boolean(b.archived) && Boolean(a.resetForDeletion) === Boolean(b.resetForDeletion);
   const sameStudentFields = (a,b) => a && b && a.name === b.name && (a.house || null) === (b.house || null) && (Number(a.points)||0) === (Number(b.points)||0);
   const sameHistoryFields = (a,b) => a && b && stableJson(historyPayload(a)) === stableJson(historyPayload(b));
@@ -3204,7 +3205,7 @@ if (inCastle) {
         const currentHistoryMap = new Map((st.history || []).map(h => [historyClientKey(h), h]));
         for(const h of (st.history || [])){
           const hkey = historyClientKey(h), oldH = oldHistoryMap.get(hkey), hp = historyPayload(h);
-          const gradePayload = { student_id: st.dbId, history_id: hkey, grade: hp.grade, points: hp.points, entry_type: hp.entry_type };
+          const gradePayload = { student_id: st.dbId, history_id: hkey, grade: hp.grade, points: hp.points, entry_type: hp.entry_type, reference: hp.reference };
           if(!h.dbId){
             const { data, error } = await supabase.from('grades').insert(gradePayload).select('id').single();
             if(error) throw error;
@@ -4191,11 +4192,11 @@ $('reviewHousesBtn').onclick = () => {
       cupRows.push(['Classe',c.name,c.schoolYear,c.archived ? 'Archivio' : 'Attiva',t.g,t.t,t.r,t.s,houseKeys.reduce((n,k)=>n+t[k],0),c.students.length]);
     });
 
-    const movementRows = [['Classe','Anno scolastico','Stato classe','Data','ID studente','Studente','Casata al momento dell’esportazione','Tipo movimento','Voto','Punti','ID movimento']];
+    const movementRows = [['Classe','Anno scolastico','Stato classe','Data','ID studente','Studente','Casata al momento dell’esportazione','Tipo movimento','Voto','Punti','Referenza','ID movimento']];
     allStudents.forEach(({c,st}) => (st.history || []).forEach(h => {
       let date = h.date || (Number.isFinite(Number(h.id)) && Number(h.id) > 100000000000 ? new Date(Number(h.id)).toISOString() : '');
       let type = h.grade === 'Encomio speciale' ? 'Bonus' : h.grade === 'Malus' ? 'Malus' : 'Voto';
-      movementRows.push([c.name,c.schoolYear,c.archived ? 'Archivio' : 'Attiva',date ? String(date).slice(0,10) : '',String(st.id ?? ''),st.name,st.house ? houses[st.house] : 'Da smistare',type,(h.grade === 'Encomio speciale' || h.grade === 'Malus') ? '' : (h.grade ?? ''),Number(h.points)||0,String(h.id ?? '')]);
+      movementRows.push([c.name,c.schoolYear,c.archived ? 'Archivio' : 'Attiva',date ? String(date).slice(0,10) : '',String(st.id ?? ''),st.name,st.house ? houses[st.house] : 'Da smistare',type,(h.grade === 'Encomio speciale' || h.grade === 'Malus') ? '' : (h.grade ?? ''),Number(h.points)||0,String(h.reference || h.testName || ''),String(h.id ?? '')]);
     }));
     const sheetsData = [
       {name:'Castello', rows:castleRows},
