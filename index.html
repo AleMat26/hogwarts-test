@@ -2619,6 +2619,25 @@ if (inCastle) {
     $('houseStudentsPanel').style.display = 'block';
   }
 
+  // Quando si apre una delle due schede operative, porta la pagina in fondo,
+  // indipendentemente dal percorso usato per aprirla.
+  function scrollPageToBottom(){
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.scrollTo({ top: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight), behavior: 'smooth' });
+    }));
+  }
+  const operationalPanelsObserver = new MutationObserver(mutations => {
+    for(const mutation of mutations){
+      const panel = mutation.target;
+      if((panel.id === 'classCard' || panel.id === 'pointsCard') && panel.style.display !== 'none'){
+        scrollPageToBottom();
+        break;
+      }
+    }
+  });
+  operationalPanelsObserver.observe($('classCard'), { attributes: true, attributeFilter: ['style'] });
+  operationalPanelsObserver.observe($('pointsCard'), { attributes: true, attributeFilter: ['style'] });
+
   function openStudentPoints(studentId){
     const st = state.students.find(x => String(x.id) === String(studentId));
     if(!st) return;
