@@ -1241,7 +1241,7 @@ input, select, .authbox input {
   <!-- IMPORTAZIONE FACOLTATIVA DEI VOTI DA EXCEL -->
   <section class="card" id="gradeImportCard" style="display:none">
     <h3>📥 Importa voti</h3>
-    <p class="class-manager-note">Funzione aggiuntiva: la gestione manuale dei punti rimane invariata. Il sistema legge esclusivamente il foglio <strong>Hogwarts</strong> e riconosce gli studenti tramite l’<code>id</code> univoco dello studente nel database.</p>
+    <p class="class-manager-note">Il sistema legge esclusivamente il foglio <strong>Hogwarts</strong> e riconosce gli studenti tramite l’<code>id</code> univoco dello studente nel database.</p>
     <div style="display:grid;gap:12px;max-width:720px">
       <label style="display:grid;gap:6px;font:14px system-ui,sans-serif;color:var(--muted)">Nome della verifica (per riconoscere eventuali doppie importazioni)
         <input id="gradeImportTestName" type="text" maxlength="120" placeholder="es. Verifica di fisica del 17 ottobre" autocomplete="off">
@@ -1670,6 +1670,20 @@ input, select, .authbox input {
     $('gradeImportDuplicateConfirm').checked = false;
     setGradeImportStatus(message);
   }
+  function clearGradeImportForm(message='Seleziona una verifica e poi un file Excel. Puoi importare un solo file alla volta.'){
+    const testName = $('gradeImportTestName');
+    const file = $('gradeImportFile');
+    if(testName) testName.value = '';
+    if(file) file.value = '';
+    clearGradeImportPreview(message);
+  }
+  function closeGradeImportPanel(){
+    gradeImportOpen = false;
+    const card = $('gradeImportCard');
+    if(card) card.style.display = 'none';
+    clearGradeImportForm();
+    updateGradeImportAvailability();
+  }
   function updateGradeImportAvailability(){
     const c = activeClass();
     const readOnly = !c || Boolean(c.archived) || role !== 'teacher' || teacherView !== 'class';
@@ -1951,8 +1965,7 @@ input, select, .authbox input {
     render();
     renderTeacher();
     renderHouseStudents();
-    clearGradeImportPreview('Importazione completata: '+count+' voti registrati. Puoi selezionare un altro file.');
-    $('gradeImportFile').value='';
+    clearGradeImportForm('Importazione completata: '+count+' voti registrati. Puoi avviare una nuova importazione.');
     showToast(`Importazione completata: ${count} voti registrati${!logSaved?' (attenzione: non è stato possibile memorizzare il controllo anti-duplicato)':''}.`);
   }
 
@@ -2160,8 +2173,7 @@ input, select, .authbox input {
     selectedHouse = null;
     $('manageBtn').classList.remove('primary');
     $('pointsBtn').classList.remove('primary');
-    gradeImportOpen = false;
-    $('gradeImportCard').style.display = 'none';
+    closeGradeImportPanel();
     document.querySelectorAll('.house').forEach(card => card.classList.remove('selected'));
     renderHouseCupArchive();
     try { await loadHouseCupArchive(); }
@@ -2708,9 +2720,13 @@ if (inCastle) {
   $('importGradeBtn').addEventListener('click', e => {
     e.stopPropagation();
     if(role !== 'teacher' || teacherView !== 'class' || !activeClass()) return;
-    gradeImportOpen = !gradeImportOpen;
-    $('gradeImportCard').style.display = gradeImportOpen ? 'block' : 'none';
-    updateGradeImportAvailability();
+    if(gradeImportOpen) {
+      closeGradeImportPanel();
+    } else {
+      gradeImportOpen = true;
+      $('gradeImportCard').style.display = 'block';
+      updateGradeImportAvailability();
+    }
   });
   $('chooseGradeFileBtn').addEventListener('click',()=>{
     if(activeIsArchived()){ showToast('La classe è in archivio e non può essere modificata.'); return; }
@@ -3243,8 +3259,7 @@ if (inCastle) {
     state.schoolYear = target.schoolYear;
     state.students = target.students;
     state.nextId = target.nextId;
-    clearGradeImportPreview('Classe cambiata. Inserisci il nome della verifica e seleziona il file Excel.');
-    $('gradeImportFile').value = '';
+    clearGradeImportForm();
     selectedHouse = null;
     $('houseSearch').value = '';
     $('studentSearch').value = '';
@@ -4530,9 +4545,7 @@ $('reviewHousesBtn').onclick = () => {
   document.addEventListener('click', e => {
     if(!gradeImportOpen) return;
     if(e.target.closest('#gradeImportCard, #importGradeBtn')) return;
-    gradeImportOpen = false;
-    $('gradeImportCard').style.display = 'none';
-    updateGradeImportAvailability();
+    closeGradeImportPanel();
   });
 
   // Un clic sullo sfondo chiude le schede operative della classe.
