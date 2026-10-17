@@ -2712,7 +2712,10 @@ if (inCastle) {
         const reference = String(h.reference || h.testName || '').trim();
         return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid #3f3b32;border-radius:10px">
           <span style="min-width:0"><span>${esc(h.grade === 'Encomio speciale' ? '✨ Bonus' : h.grade === 'Malus' ? '⚖️ Malus' : 'Voto ' + h.grade)} → ${esc(h.points >= 0 ? '+' : '')}${esc(pointLabel(h.points))}</span>${reference ? `<span style="display:block;margin-top:4px;font-size:12px;opacity:.82">Verifica: ${esc(reference)}</span>` : ''}</span>
-          <button type="button" class="del" data-id="${esc(h.id)}" title="Rimuovi voce" ${activeIsArchived() ? 'disabled' : ''} style="flex-shrink:0;border:0;background:transparent;cursor:pointer;font-size:18px">🗑️</button>
+          <span style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+            ${h.grade !== 'Encomio speciale' && h.grade !== 'Malus' && Number.isFinite(Number(h.grade)) ? `<button type="button" class="edit-grade" data-id="${esc(h.id)}" title="Modifica voto" aria-label="Modifica voto" ${activeIsArchived() ? 'disabled' : ''} style="border:0;background:transparent;cursor:pointer;font-size:17px;padding:3px">✏️</button>` : ''}
+            <button type="button" class="del" data-id="${esc(h.id)}" title="Rimuovi voce" aria-label="Rimuovi voce" ${activeIsArchived() ? 'disabled' : ''} style="border:0;background:transparent;cursor:pointer;font-size:18px;padding:3px">🗑️</button>
+          </span>
         </div>`;
       }).join('') || '<div>Nessun voto registrato.</div>') : '';
   }
@@ -4590,16 +4593,48 @@ $('reviewHousesBtn').onclick = () => {
 
   $('gradeHistory').onclick = e => {
     if(activeIsArchived()){ showToast('Lo storico in archivio è di sola consultazione.'); return; }
-    let b = e.target.closest('.del');
-    if(!b) return;
-    let s = state.students.find(x => String(x.id) === String($('pointsStudent').value)),
-        i = s.history.findIndex(h => String(h.id) === b.dataset.id);
-    if(i >= 0 && confirm('Rimuovere questo voto?')){
+    const editButton = e.target.closest('.edit-grade');
+    if(editButton){
+      const student = state.students.find(x => String(x.id) === String($('pointsStudent').value));
+      if(!student) return;
+      const entry = (student.history || []).find(h => String(h.id) === editButton.dataset.id);
+      if(!entry || entry.grade === 'Encomio speciale' || entry.grade === 'Malus') return;
+      const oldGrade = Number(entry.grade);
+      const answer = prompt('Inserisci il nuovo voto (da 1 a 10):', String(entry.grade).replace('.', ','));
+      if(answer === null) return;
+      const newGrade = Number(answer.trim().replace(',', '.'));
+      if(!Number.isFinite(newGrade) || newGrade < 1 || newGrade > 10){
+        alert('Inserisci un voto valido compreso tra 1 e 10.');
+        return;
+      }
+      if(newGrade === oldGrade) return;
+      const oldPoints = Number(entry.points) || 0;
+      const newPoints = score(newGrade);
       markClassChanged();
-      const removedPoints = Number(s.history[i].points) || 0;
-      s.points -= removedPoints;
+      entry.grade = newGrade;
+      entry.points = newPoints;
+      student.points += newPoints - oldPoints;
+      if(newPoints !== oldPoints) markHouseCupDirty();
+      const selectedStudentId = String(student.id);
+      save();
+      render();
+      $('pointsStudent').value = selectedStudentId;
+      history();
+      renderHouseStudents();
+      showToast('Voto aggiornato: ' + oldGrade + ' → ' + newGrade + '. Punteggio dello studente ricalcolato.');
+      return;
+    }
+    const deleteButton = e.target.closest('.del');
+    if(!deleteButton) return;
+    const student = state.students.find(x => String(x.id) === String($('pointsStudent').value));
+    if(!student) return;
+    const index = (student.history || []).findIndex(h => String(h.id) === deleteButton.dataset.id);
+    if(index >= 0 && confirm('Rimuovere questo voto?')){
+      markClassChanged();
+      const removedPoints = Number(student.history[index].points) || 0;
+      student.points -= removedPoints;
       if(removedPoints !== 0) markHouseCupDirty();
-      s.history.splice(i, 1);
+      student.history.splice(index, 1);
       save();
       render();
     }
