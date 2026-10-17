@@ -2729,6 +2729,12 @@ if (inCastle) {
     $('manageBtn').classList.remove('primary');
     $('pointsBtn').classList.remove('primary');
 
+    // Chiudi anche l'eventuale pannello della Casata aperto nella classe.
+    selectedHouse = null;
+    $('houseSearch').value = '';
+    $('houseStudentsPanel').style.display = 'none';
+    document.querySelectorAll('.house').forEach(card => card.classList.remove('selected'));
+
     if(gradeImportOpen) {
       closeGradeImportPanel();
     } else {
