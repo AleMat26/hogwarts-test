@@ -1413,7 +1413,6 @@ input, select, .authbox input {
   let gradeImportOpen = false;
   let selectedHouse = null;
   let teacherView = 'class'; // 'class' oppure 'castle'
-  let directCastleStudentPoints = false; // gestione punteggio aperta direttamente dalla ricerca globale del Castello
   let resetPointsSelection = true;
   let houseCupArchiveRecords = [];
   let houseCupArchiveLoaded = false;
@@ -2534,26 +2533,6 @@ if (inCastle) {
       $('houseStudentsPanel').style.display = 'none';
       document.querySelectorAll('.house').forEach(card => card.classList.remove('selected'));
     }
-
-    // Modalità diretta dalla ricerca del Castello: lascia visibile solo la gestione
-    // dei punteggi dello studente, senza mostrare la pagina della classe o il Castello.
-    if(role === 'teacher' && directCastleStudentPoints){
-      $('castleStudentSearch').style.display = 'none';
-      $('castleClassScores').style.display = 'none';
-      $('teacherWorkControls').style.display = 'none';
-      $('gradeImportCard').style.display = 'none';
-      $('classCard').style.display = 'none';
-      $('pointsCard').style.display = 'block';
-      $('houses').style.display = 'none';
-      $('ranking').style.display = 'none';
-      $('houseStudentsPanel').style.display = 'none';
-      $('castleViewBtn').style.display = 'inline-block';
-      $('castleViewBtn').textContent = '🏰 Torna al Castello';
-    } else {
-      $('houses').style.display = '';
-      $('ranking').style.display = '';
-      $('castleViewBtn').textContent = '🏰 Visualizza Castello';
-    }
   }
 
   const formatPoints = n => Number((Number(n) || 0).toFixed(2)).toLocaleString('it-IT', { maximumFractionDigits: 2 });
@@ -2584,7 +2563,7 @@ if (inCastle) {
     results.innerHTML = matches.slice(0,50).map(item => {
       const st = item.student;
       const house = st.house && houses[st.house] ? houses[st.house] : 'Da smistare';
-      return `<button type="button" class="castle-student-result" data-student-class="${esc(item.classId)}" data-student-id="${esc(st.id)}" aria-label="Apri la classe ${esc(item.className)} per ${esc(st.name)}">
+      return `<button type="button" class="castle-student-result" data-student-class="${esc(item.classId)}" aria-label="Apri la classe ${esc(item.className)} per ${esc(st.name)}">
         <span><strong>${esc(st.name)}</strong><br><span class="student-result-meta">${esc(house)} · ${esc(item.className)} · ${esc(item.schoolYear || '')}${item.archived ? ' · Archivio' : ''}</span></span>
         <span class="student-result-points">${pointLabel(st.points || 0)}</span>
       </button>`;
@@ -2640,22 +2619,7 @@ if (inCastle) {
     $('houseStudentsPanel').style.display = 'block';
   }
 
-  function openStudentPoints(studentId, classId = null){
-    // La ricerca globale passa il contesto della classe direttamente qui: non apre
-    // la schermata classe, ma prepara i dati necessari alla gestione del singolo studente.
-    if(classId !== null && classId !== undefined){
-      const targetClass = state.classes.find(c => String(c.id) === String(classId));
-      const targetStudent = targetClass?.students?.find(x => String(x.id) === String(studentId));
-      if(!targetClass || !targetStudent) return;
-      if(state.activeClassId != null && state.classes.some(c => String(c.id) === String(state.activeClassId))) save();
-      state.activeClassId = targetClass.id;
-      state.className = targetClass.name;
-      state.schoolYear = targetClass.schoolYear;
-      state.students = targetClass.students;
-      state.nextId = targetClass.nextId;
-      clearGradeImportForm();
-      directCastleStudentPoints = true;
-    }
+  function openStudentPoints(studentId){
     const st = state.students.find(x => String(x.id) === String(studentId));
     if(!st) return;
     teacherView = 'class';
@@ -2665,6 +2629,7 @@ if (inCastle) {
     $('houseStudentsPanel').style.display = 'none';
     $('castleViewBtn').style.display = 'inline-block';
     $('classCard').style.display = 'none';
+    $('pointsCard').style.display = 'block';
     $('manageBtn').classList.remove('primary');
     $('pointsBtn').classList.add('primary');
     $('gradeInput').value = '';
@@ -2672,16 +2637,7 @@ if (inCastle) {
     render();
     const studentSelect = $('pointsStudent');
     const targetId = String(st.id);
-    let targetOption = [...studentSelect.options].find(option => option.value === targetId);
-    if(!targetOption){
-      targetOption = document.createElement('option');
-      targetOption.value = targetId;
-      targetOption.textContent = st.name;
-      studentSelect.appendChild(targetOption);
-    }
-    studentSelect.value = targetId;
-    $('classCard').style.display = 'none';
-    $('pointsCard').style.display = 'block';
+    if([...studentSelect.options].some(option => option.value === targetId)) studentSelect.value = targetId;
     history();
     if(!activeIsArchived()) $('gradeInput').focus({ preventScroll: true });
   }
@@ -2890,15 +2846,10 @@ if (inCastle) {
   $('castleStudentSearchResults').addEventListener('click', e => {
     const result = e.target.closest('[data-student-class]');
     if(!result) return;
-    e.preventDefault();
-    e.stopPropagation();
     const classId = result.dataset.studentClass;
-    const studentId = result.dataset.studentId;
-    const targetClass = state.classes.find(c => String(c.id) === String(classId));
-    const targetStudent = targetClass?.students?.find(st => String(st.id) === String(studentId));
-    if(!targetClass || !targetStudent) return;
     $('castleStudentSearchInput').value = '';
-    openStudentPoints(targetStudent.id, targetClass.id);
+    renderCastleStudentSearch();
+    switchClass(classId);
   });
 
   // Le schede delle Casate mostrano l'elenco soltanto in modalità docente.
@@ -3357,7 +3308,6 @@ if (inCastle) {
   }
 
   function switchClass(classId){
-    directCastleStudentPoints = false;
     // Gli ID possono arrivare dal DOM come stringhe anche quando nello stato
     // sono numeri: confrontiamo sempre la rappresentazione testuale.
     const target = state.classes.find(c => String(c.id) === String(classId));
@@ -3809,7 +3759,6 @@ $('promoteClassBtn').onclick = async () => {
   // Vista Castello: riepilogo cumulativo di tutte le classi attive, senza pannelli operativi.
   // Per tornare alla gestione si seleziona una classe dal menu a tendina.
   $('castleViewBtn').onclick = () => {
-    directCastleStudentPoints = false;
     $('houseCupArchivePanel').style.display = 'none';
     teacherView = 'castle';
     resetPointsSelection = true;
