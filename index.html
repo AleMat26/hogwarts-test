@@ -2619,28 +2619,19 @@ if (inCastle) {
     $('houseStudentsPanel').style.display = 'block';
   }
 
-  // All'apertura delle schede operative, applica una posizione distinta:
-  // Gestisci studenti viene centrata orizzontalmente; Gestisci punti resta in fondo.
-  function scrollPageToBottom(){
+  // All'apertura delle schede operative, centra la scheda interessata
+  // orizzontalmente senza forzare lo scorrimento verticale fino al fondo.
+  function centerPanelHorizontally(panelId){
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      window.scrollTo({ top: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight), behavior: 'smooth' });
-    }));
-  }
-  function centerStudentManagementHorizontally(){
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      $('classCard').scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      $(panelId).scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }));
   }
   const operationalPanelsObserver = new MutationObserver(mutations => {
     for(const mutation of mutations){
       const panel = mutation.target;
       if(panel.style.display === 'none') continue;
-      if(panel.id === 'classCard'){
-        centerStudentManagementHorizontally();
-        break;
-      }
-      if(panel.id === 'pointsCard'){
-        scrollPageToBottom();
+      if(panel.id === 'classCard' || panel.id === 'pointsCard'){
+        centerPanelHorizontally(panel.id);
         break;
       }
     }
