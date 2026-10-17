@@ -2619,11 +2619,11 @@ if (inCastle) {
     $('houseStudentsPanel').style.display = 'block';
   }
 
-  // All'apertura di Gestisci studenti o Gestisci punti, centra orizzontalmente
-  // l'intera box Gestione operativa, senza forzare lo scorrimento verticale.
-  function centerOperationalControlsHorizontally(){
+  // All'apertura di Gestisci studenti o Gestisci punti, centra verticalmente
+  // l'intera box Gestione operativa nella finestra.
+  function centerOperationalControlsVertically(){
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      $('teacherWorkControls').scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      $('teacherWorkControls').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     }));
   }
   const operationalPanelsObserver = new MutationObserver(mutations => {
@@ -2631,7 +2631,7 @@ if (inCastle) {
       const panel = mutation.target;
       if(panel.style.display === 'none') continue;
       if(panel.id === 'classCard' || panel.id === 'pointsCard'){
-        centerOperationalControlsHorizontally();
+        centerOperationalControlsVertically();
         break;
       }
     }
