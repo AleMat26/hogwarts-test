@@ -2563,7 +2563,7 @@ if (inCastle) {
     results.innerHTML = matches.slice(0,50).map(item => {
       const st = item.student;
       const house = st.house && houses[st.house] ? houses[st.house] : 'Da smistare';
-      return `<button type="button" class="castle-student-result" data-student-class="${esc(item.classId)}" aria-label="Apri la classe ${esc(item.className)} per ${esc(st.name)}">
+      return `<button type="button" class="castle-student-result" data-student-class="${esc(item.classId)}" data-student-id="${esc(st.id)}" aria-label="Apri la classe ${esc(item.className)} per ${esc(st.name)}">
         <span><strong>${esc(st.name)}</strong><br><span class="student-result-meta">${esc(house)} · ${esc(item.className)} · ${esc(item.schoolYear || '')}${item.archived ? ' · Archivio' : ''}</span></span>
         <span class="student-result-points">${pointLabel(st.points || 0)}</span>
       </button>`;
@@ -2847,9 +2847,14 @@ if (inCastle) {
     const result = e.target.closest('[data-student-class]');
     if(!result) return;
     const classId = result.dataset.studentClass;
+    // Recupera lo studente dalla classe selezionata: gli ID locali possono
+    // ripetersi tra classi diverse, quindi la ricerca è circoscritta alla classe.
+    const targetClass = state.classes.find(c => String(c.id) === String(classId));
+    const targetStudent = targetClass?.students?.find(st => String(st.id) === String(result.dataset.studentId));
     $('castleStudentSearchInput').value = '';
     renderCastleStudentSearch();
     switchClass(classId);
+    if(targetStudent) openStudentPoints(targetStudent.id);
   });
 
   // Le schede delle Casate mostrano l'elenco soltanto in modalità docente.
