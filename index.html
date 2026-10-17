@@ -2846,6 +2846,10 @@ if (inCastle) {
   $('castleStudentSearchResults').addEventListener('click', e => {
     const result = e.target.closest('[data-student-class][data-student-id]');
     if(!result) return;
+    // Questo clic proviene dal Castello: non deve arrivare al gestore globale
+    // che interpreta i clic esterni alle schede come richiesta di chiusura.
+    e.preventDefault();
+    e.stopPropagation();
     const classId = result.dataset.studentClass;
     const studentId = result.dataset.studentId;
     $('castleStudentSearchInput').value = '';
