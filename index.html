@@ -2847,14 +2847,26 @@ if (inCastle) {
     const result = e.target.closest('[data-student-class]');
     if(!result) return;
     const classId = result.dataset.studentClass;
-    // Recupera lo studente dalla classe selezionata: gli ID locali possono
-    // ripetersi tra classi diverse, quindi la ricerca è circoscritta alla classe.
+    // La ricerca globale identifica lo studente insieme alla sua classe:
+    // gli ID locali possono ripetersi tra classi diverse.
     const targetClass = state.classes.find(c => String(c.id) === String(classId));
     const targetStudent = targetClass?.students?.find(st => String(st.id) === String(result.dataset.studentId));
+    if(!targetClass || !targetStudent) return;
+
+    // Cambia il contesto della classe senza passare dalla schermata della classe:
+    // l'unica schermata mostrata dopo il clic sarà Gestisci punteggio.
+    if(state.activeClassId != null && state.classes.some(c => String(c.id) === String(state.activeClassId))) save();
+    state.activeClassId = targetClass.id;
+    state.className = targetClass.name;
+    state.schoolYear = targetClass.schoolYear;
+    state.students = targetClass.students;
+    state.nextId = targetClass.nextId;
+    resetPointsSelection = true;
+    clearGradeImportForm();
+    selectedHouse = null;
     $('castleStudentSearchInput').value = '';
     renderCastleStudentSearch();
-    switchClass(classId);
-    if(targetStudent) openStudentPoints(targetStudent.id);
+    openStudentPoints(targetStudent.id);
   });
 
   // Le schede delle Casate mostrano l'elenco soltanto in modalità docente.
