@@ -2619,11 +2619,11 @@ if (inCastle) {
     $('houseStudentsPanel').style.display = 'block';
   }
 
-  // All'apertura delle schede operative, centra la scheda interessata
-  // orizzontalmente senza forzare lo scorrimento verticale fino al fondo.
-  function centerPanelHorizontally(panelId){
+  // All'apertura di Gestisci studenti o Gestisci punti, centra orizzontalmente
+  // l'intera box Gestione operativa, senza forzare lo scorrimento verticale.
+  function centerOperationalControlsHorizontally(){
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      $(panelId).scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      $('teacherWorkControls').scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }));
   }
   const operationalPanelsObserver = new MutationObserver(mutations => {
@@ -2631,7 +2631,7 @@ if (inCastle) {
       const panel = mutation.target;
       if(panel.style.display === 'none') continue;
       if(panel.id === 'classCard' || panel.id === 'pointsCard'){
-        centerPanelHorizontally(panel.id);
+        centerOperationalControlsHorizontally();
         break;
       }
     }
