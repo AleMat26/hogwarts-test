@@ -1082,9 +1082,9 @@ input, select, .authbox input {
 #gradeImportCard #gradeImportPreview,
 #gradeImportCard #gradeImportDuplicateConfirmWrap { width:100%; box-sizing:border-box; }
 #gradeImportPreview { overflow-x:auto; }
-.grade-import-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:12px 0; width:100%; }
-.grade-import-stat { min-width:0; padding:10px 12px; border:1px solid rgba(216,181,106,.25); border-radius:10px; background:rgba(255,255,255,.025); font:12px/1.45 system-ui,sans-serif; }
-.grade-import-stat strong { display:block; color:var(--gold-soft); font-size:19px; }
+.grade-import-summary { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin:12px 0; width:100%; }
+.grade-import-stat { min-width:0; padding:8px 9px; border:1px solid rgba(216,181,106,.25); border-radius:9px; background:rgba(255,255,255,.025); font:11px/1.35 system-ui,sans-serif; overflow-wrap:anywhere; }
+.grade-import-stat strong { display:block; color:var(--gold-soft); font-size:17px; }
 .grade-import-warnings { padding:12px 14px; border:1px solid rgba(213,140,133,.55); border-radius:10px; background:rgba(135,49,49,.13); color:#ffe1df; font:13px/1.5 system-ui,sans-serif; margin:10px 0; box-sizing:border-box; }
 .grade-import-note { padding:12px 14px; border:1px solid rgba(216,181,106,.3); border-radius:10px; background:rgba(216,181,106,.06); color:#e9dfc7; font:13px/1.5 system-ui,sans-serif; margin:10px 0; box-sizing:border-box; }
 .grade-import-table { width:100%; min-width:900px; table-layout:fixed; border-collapse:collapse; font:12px/1.45 system-ui,sans-serif; margin-top:12px; }
@@ -1817,7 +1817,6 @@ input, select, .authbox input {
       const items = result.warnings.concat(invalid.map(r=>`${r.name} (${r.studentId}): ${r.detail}`), noGrade.map(r=>`${r.name} (${r.studentId}): ${r.detail || 'nessun voto individuato; nessuna modifica'}`));
       html += '<div class="grade-import-note"><strong>Controlli e avvisi</strong><ul>' + items.map(x=>`<li>${esc(x)}</li>`).join('') + '</ul></div>';
     }
-    html += '<p class="class-manager-note">Excel è la fonte di riferimento: i voti modificati aggiornano la voce già registrata e il totale punti, senza duplicarla. Le righe identiche non vengono toccate.</p>';
     html += '<table class="grade-import-table"><thead><tr><th>Studente</th><th>ID database</th><th>Voto Excel</th><th>Punti</th><th>Casata</th><th>Esito</th></tr></thead><tbody>';
     html += result.rows.map(r=>{
       const status = r.kind==='invalid' ? 'Voto non valido' : r.kind==='notfound' ? 'Nessuna modifica' :
