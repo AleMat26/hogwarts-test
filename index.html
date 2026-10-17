@@ -1073,17 +1073,31 @@ input, select, .authbox input {
 
 /* Importazione Excel: pannello separato dalla gestione manuale dei punti. */
 #gradeImportCard code { color: var(--gold-soft); }
+#gradeImportCard { box-sizing:border-box; }
+#gradeImportCard > * { min-width:0; }
+#gradeImportCard .grade-import-form { width:100%; max-width:none; }
+#gradeImportCard .grade-import-test-label input { width:100%; box-sizing:border-box; }
+#gradeImportCard .grade-import-actions .btn { flex:1 1 220px; min-width:0; }
+#gradeImportCard #gradeImportStatus,
+#gradeImportCard #gradeImportPreview,
+#gradeImportCard #gradeImportDuplicateConfirmWrap { width:100%; box-sizing:border-box; }
 #gradeImportPreview { overflow-x:auto; }
-.grade-import-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:8px; margin:12px 0; }
-.grade-import-stat { padding:10px 12px; border:1px solid rgba(216,181,106,.25); border-radius:10px; background:rgba(255,255,255,.025); font:12px/1.45 system-ui,sans-serif; }
+.grade-import-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:12px 0; width:100%; }
+.grade-import-stat { min-width:0; padding:10px 12px; border:1px solid rgba(216,181,106,.25); border-radius:10px; background:rgba(255,255,255,.025); font:12px/1.45 system-ui,sans-serif; }
 .grade-import-stat strong { display:block; color:var(--gold-soft); font-size:19px; }
-.grade-import-warnings { padding:12px 14px; border:1px solid rgba(213,140,133,.55); border-radius:10px; background:rgba(135,49,49,.13); color:#ffe1df; font:13px/1.5 system-ui,sans-serif; margin:10px 0; }
-.grade-import-note { padding:12px 14px; border:1px solid rgba(216,181,106,.3); border-radius:10px; background:rgba(216,181,106,.06); color:#e9dfc7; font:13px/1.5 system-ui,sans-serif; margin:10px 0; }
-.grade-import-table { width:100%; border-collapse:collapse; font:12px/1.4 system-ui,sans-serif; margin-top:12px; }
-.grade-import-table th,.grade-import-table td { padding:8px 9px; border-bottom:1px solid rgba(255,255,255,.1); text-align:left; white-space:nowrap; }
+.grade-import-warnings { padding:12px 14px; border:1px solid rgba(213,140,133,.55); border-radius:10px; background:rgba(135,49,49,.13); color:#ffe1df; font:13px/1.5 system-ui,sans-serif; margin:10px 0; box-sizing:border-box; }
+.grade-import-note { padding:12px 14px; border:1px solid rgba(216,181,106,.3); border-radius:10px; background:rgba(216,181,106,.06); color:#e9dfc7; font:13px/1.5 system-ui,sans-serif; margin:10px 0; box-sizing:border-box; }
+.grade-import-table { width:100%; min-width:760px; table-layout:fixed; border-collapse:collapse; font:12px/1.45 system-ui,sans-serif; margin-top:12px; }
+.grade-import-table th,.grade-import-table td { padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.1); text-align:left; white-space:normal; overflow-wrap:anywhere; vertical-align:top; }
 .grade-import-table th { color:var(--gold-soft); background:rgba(255,255,255,.04); }
+.grade-import-table th:nth-child(1),.grade-import-table td:nth-child(1) { width:18%; }
+.grade-import-table th:nth-child(2),.grade-import-table td:nth-child(2) { width:19%; }
+.grade-import-table th:nth-child(3),.grade-import-table td:nth-child(3) { width:7%; }
+.grade-import-table th:nth-child(4),.grade-import-table td:nth-child(4) { width:8%; }
+.grade-import-table th:nth-child(5),.grade-import-table td:nth-child(5) { width:14%; }
+.grade-import-table th:nth-child(6),.grade-import-table td:nth-child(6) { width:34%; }
 .grade-import-status-ok { color:#a5e0b4; } .grade-import-status-skip { color:#f0d47e; } .grade-import-status-error { color:#ffb4ae; }
-@media(max-width:600px) { #gradeImportCard .btn { width:100%; } .grade-import-table { font-size:11px; } }
+@media(max-width:700px) { .grade-import-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } #gradeImportCard .btn { width:100%; } .grade-import-table { font-size:11px; } }
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1242,11 +1256,11 @@ input, select, .authbox input {
   <section class="card" id="gradeImportCard" style="display:none">
     <h3>📥 Importa voti</h3>
     <p class="class-manager-note">Il sistema legge esclusivamente il foglio <strong>Hogwarts</strong> e riconosce gli studenti tramite l’<code>id</code> univoco dello studente nel database.</p>
-    <div style="display:grid;gap:12px;max-width:720px">
-      <label style="display:grid;gap:6px;font:14px system-ui,sans-serif;color:var(--muted)">Nome della verifica (per riconoscere eventuali doppie importazioni)
+    <div class="grade-import-form" style="display:grid;gap:12px;width:100%;min-width:0">
+      <label class="grade-import-test-label" style="display:grid;gap:6px;width:100%;font:14px system-ui,sans-serif;color:var(--muted)">Nome della verifica (per riconoscere eventuali doppie importazioni)
         <input id="gradeImportTestName" type="text" maxlength="120" placeholder="es. Verifica di fisica del 17 ottobre" autocomplete="off">
       </label>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="grade-import-actions" style="display:flex;gap:10px;flex-wrap:wrap;width:100%">
         <button type="button" class="btn" id="exportStudentIdsBtn">⇩ Esporta elenco studenti (.xlsx)</button>
         <button type="button" class="btn primary" id="chooseGradeFileBtn">＋ Seleziona file Excel</button>
         <input type="file" id="gradeImportFile" accept=".xlsx,.xls,.xlsm" hidden>
@@ -1669,6 +1683,7 @@ input, select, .authbox input {
     $('gradeImportDuplicateConfirmWrap').style.display = 'none';
     $('gradeImportDuplicateConfirm').checked = false;
     setGradeImportStatus(message);
+    updateGradeImportAvailability();
   }
   function clearGradeImportForm(message='Seleziona una verifica e poi un file Excel. Puoi importare un solo file alla volta.'){
     const testName = $('gradeImportTestName');
@@ -1688,13 +1703,14 @@ input, select, .authbox input {
     const c = activeClass();
     const readOnly = !c || Boolean(c.archived) || role !== 'teacher' || teacherView !== 'class';
     const choose = $('chooseGradeFileBtn');
-    if(choose) choose.disabled = readOnly;
+    const previewLocked = Boolean(pendingGradeImport);
+    if(choose) choose.disabled = readOnly || previewLocked;
     const name = $('gradeImportTestName');
-    if(name) name.disabled = readOnly;
+    if(name) name.disabled = readOnly || previewLocked;
     const file = $('gradeImportFile');
-    if(file) file.disabled = readOnly;
+    if(file) file.disabled = readOnly || previewLocked;
     const exportBtn = $('exportStudentIdsBtn');
-    if(exportBtn) exportBtn.disabled = !c || role !== 'teacher' || teacherView !== 'class';
+    if(exportBtn) exportBtn.disabled = !c || role !== 'teacher' || teacherView !== 'class' || previewLocked;
     const importBtn = $('importGradeBtn');
     if(importBtn) {
       importBtn.setAttribute('aria-expanded', gradeImportOpen ? 'true' : 'false');
@@ -1803,14 +1819,14 @@ input, select, .authbox input {
         result.duplicateRecords.map(r=>`<li>${esc(r.reason)}</li>`).join('') +
         '</ul>Se continui, i punti verranno aggiunti una seconda volta.</div>';
     }
-    html += '<table class="grade-import-table"><thead><tr><th>Studente</th><th>ID database</th><th>Voto</th><th>Punti</th><th>Esito</th></tr></thead><tbody>';
+    html += '<table class="grade-import-table"><thead><tr><th>Studente</th><th>ID database</th><th>Voto</th><th>Punti</th><th>Casata</th><th>Esito</th></tr></thead><tbody>';
     const previewRows = result.rows;
     html += previewRows.map(r=>{
       const status = r.kind==='grade' ? 'Da importare' :
         r.kind==='absent' ? 'Assente: saltato' :
         r.kind==='invalid' ? 'Voto non valido' : 'Voto non individuato';
       const cls = r.kind==='grade' ? 'grade-import-status-ok' : r.kind==='invalid' ? 'grade-import-status-error' : 'grade-import-status-skip';
-      return `<tr><td>${esc(r.name || '—')}</td><td>${esc(r.studentId || '—')}</td><td>${r.kind==='grade' ? esc(r.grade) : '—'}</td><td>${r.kind==='grade' ? esc(pointLabel(r.points)) : '—'}</td><td class="${cls}">${esc(status)}${r.detail ? ': '+esc(r.detail) : ''}</td></tr>`;
+      return `<tr><td>${esc(r.name || '—')}</td><td>${esc(r.studentId || '—')}</td><td>${r.kind==='grade' ? esc(r.grade) : '—'}</td><td>${r.kind==='grade' ? esc(pointLabel(r.points)) : '—'}</td><td>${esc(houses[r.student && r.student.house] || 'Non assegnata')}</td><td class="${cls}">${esc(status)}${r.detail ? ': '+esc(r.detail) : ''}</td></tr>`;
     }).join('');
     html += '</tbody></table>';
     target.innerHTML = html;
@@ -1823,6 +1839,7 @@ input, select, .authbox input {
     if(fatal) setGradeImportStatus('Controlli non superati: nessun punto è stato assegnato.',true);
     else if(duplicate) setGradeImportStatus('Anteprima pronta, ma è stata rilevata una possibile doppia importazione.',true);
     else setGradeImportStatus('Anteprima pronta: nessun punto è stato ancora assegnato.');
+    updateGradeImportAvailability();
   }
   async function readGradeImportFile(file){
     const c = activeClass();
