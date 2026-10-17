@@ -1965,7 +1965,7 @@ input, select, .authbox input {
     render();
     renderTeacher();
     renderHouseStudents();
-    clearGradeImportForm('Importazione completata: '+count+' voti registrati. Puoi avviare una nuova importazione.');
+    closeGradeImportPanel();
     showToast(`Importazione completata: ${count} voti registrati${!logSaved?' (attenzione: non è stato possibile memorizzare il controllo anti-duplicato)':''}.`);
   }
 
@@ -2720,6 +2720,15 @@ if (inCastle) {
   $('importGradeBtn').addEventListener('click', e => {
     e.stopPropagation();
     if(role !== 'teacher' || teacherView !== 'class' || !activeClass()) return;
+
+    // I pannelli operativi sono mutuamente esclusivi: aprire Importa voti
+    // chiude sempre Gestisci studenti e Gestisci punti.
+    if($('classCard').style.display !== 'none') resetClassStudentSearch();
+    $('classCard').style.display = 'none';
+    $('pointsCard').style.display = 'none';
+    $('manageBtn').classList.remove('primary');
+    $('pointsBtn').classList.remove('primary');
+
     if(gradeImportOpen) {
       closeGradeImportPanel();
     } else {
