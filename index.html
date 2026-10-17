@@ -2563,7 +2563,7 @@ if (inCastle) {
     results.innerHTML = matches.slice(0,50).map(item => {
       const st = item.student;
       const house = st.house && houses[st.house] ? houses[st.house] : 'Da smistare';
-      return `<button type="button" class="castle-student-result" data-student-class="${esc(item.classId)}" aria-label="Apri la classe ${esc(item.className)} per ${esc(st.name)}">
+      return `<button type="button" class="castle-student-result" data-student-class="${esc(item.classId)}" data-student-id="${esc(st.id)}" aria-label="Apri direttamente la gestione dei punteggi di ${esc(st.name)}">
         <span><strong>${esc(st.name)}</strong><br><span class="student-result-meta">${esc(house)} · ${esc(item.className)} · ${esc(item.schoolYear || '')}${item.archived ? ' · Archivio' : ''}</span></span>
         <span class="student-result-points">${pointLabel(st.points || 0)}</span>
       </button>`;
@@ -2844,12 +2844,15 @@ if (inCastle) {
     switchClass(card.dataset.castleClass);
   });
   $('castleStudentSearchResults').addEventListener('click', e => {
-    const result = e.target.closest('[data-student-class]');
+    const result = e.target.closest('[data-student-class][data-student-id]');
     if(!result) return;
     const classId = result.dataset.studentClass;
+    const studentId = result.dataset.studentId;
     $('castleStudentSearchInput').value = '';
     renderCastleStudentSearch();
+    // Apri la classe di appartenenza e passa direttamente alla box dei punteggi.
     switchClass(classId);
+    openStudentPoints(studentId);
   });
 
   // Le schede delle Casate mostrano l'elenco soltanto in modalità docente.
