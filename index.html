@@ -2619,11 +2619,11 @@ if (inCastle) {
     $('houseStudentsPanel').style.display = 'block';
   }
 
-  // All'apertura di Gestisci studenti o Gestisci punti, centra verticalmente
-  // l'intera box Gestione operativa nella finestra.
-  function centerOperationalControlsVertically(){
+  // All'apertura delle schede, centra verticalmente nella finestra
+  // la scheda stessa: Gestione classe oppure Assegna punti tramite voto.
+  function centerManagementPanelVertically(panel){
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      $('teacherWorkControls').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      panel.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     }));
   }
   const operationalPanelsObserver = new MutationObserver(mutations => {
@@ -2631,7 +2631,7 @@ if (inCastle) {
       const panel = mutation.target;
       if(panel.style.display === 'none') continue;
       if(panel.id === 'classCard' || panel.id === 'pointsCard'){
-        centerOperationalControlsVertically();
+        centerManagementPanelVertically(panel);
         break;
       }
     }
@@ -3955,7 +3955,7 @@ $('promoteClassBtn').onclick = async () => {
         studentSelect.value = targetId;
       }
       history();
-      $('pointsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('pointsCard').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
       if(!activeIsArchived()) $('gradeInput').focus({ preventScroll: true });
     } else if(edit){
       // Il render() ricrea la lista e rimuove il pulsante cliccato dal DOM.
