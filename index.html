@@ -1257,7 +1257,7 @@ input, select, .authbox input {
     <h3>📥 Importa voti</h3>
     <p class="class-manager-note">Il sistema legge esclusivamente il foglio <strong>Hogwarts</strong> e riconosce gli studenti tramite l’<code>id</code> univoco dello studente nel database.</p>
     <div class="grade-import-form" style="display:grid;gap:12px;width:100%;min-width:0">
-      <label class="grade-import-test-label" style="display:grid;gap:6px;width:100%;font:14px system-ui,sans-serif;color:var(--muted)">Nome della verifica (per riconoscere eventuali doppie importazioni)
+      <label class="grade-import-test-label" style="display:grid;gap:6px;width:100%;font:14px system-ui,sans-serif;color:var(--muted)">Nome della verifica (per aggiornare sempre la stessa prova)
         <input id="gradeImportTestName" type="text" maxlength="120" placeholder="es. Verifica di fisica del 17 ottobre" autocomplete="off">
       </label>
       <div class="grade-import-actions" style="display:flex;gap:10px;flex-wrap:wrap;width:100%">
@@ -1794,51 +1794,51 @@ input, select, .authbox input {
   }
   function renderGradeImportPreview(result){
     const target = $('gradeImportPreview');
-    const valid = result.rows.filter(r=>r.kind==='grade');
-    const absent = result.rows.filter(r=>r.kind==='absent');
+    const additions = result.rows.filter(r=>r.action==='add' && r.kind==='grade');
+    const absences = result.rows.filter(r=>r.action==='add' && r.kind==='absent');
+    const updates = result.rows.filter(r=>r.action==='update');
+    const unchanged = result.rows.filter(r=>r.action==='unchanged');
     const noGrade = result.rows.filter(r=>r.kind==='notfound');
     const invalid = result.rows.filter(r=>r.kind==='invalid');
     const fatal = result.fatalIssues.length;
-    const duplicate = result.duplicateRecords.length > 0;
+    const actionable = additions.length + absences.length + updates.length;
     let html = `<div class="grade-import-summary">
-      <div class="grade-import-stat"><strong>${valid.length}</strong>voti pronti</div>
-      <div class="grade-import-stat"><strong>${absent.length}</strong>assenze saltate</div>
-      <div class="grade-import-stat"><strong>${noGrade.length}</strong>senza voto individuato</div>
+      <div class="grade-import-stat"><strong>${additions.length}</strong>nuovi voti</div>
+      <div class="grade-import-stat"><strong>${absences.length}</strong>nuove assenze</div>
+      <div class="grade-import-stat"><strong>${updates.length}</strong>voti/assenze da aggiornare</div>
+      <div class="grade-import-stat"><strong>${unchanged.length}</strong>già aggiornati</div>
       <div class="grade-import-stat"><strong>${result.missingStudents.length}</strong>studenti non presenti nel foglio</div>
     </div>`;
     if(result.fatalIssues.length){
       html += '<div class="grade-import-warnings"><strong>Importazione bloccata: correggi il file prima di procedere.</strong><ul>' +
         result.fatalIssues.map(x=>`<li>${esc(x)}</li>`).join('') + '</ul></div>';
     }
-    if(result.warnings.length || invalid.length){
-      const items = result.warnings.concat(invalid.map(r=>`${r.name} (${r.studentId}): ${r.detail}`));
+    if(result.warnings.length || invalid.length || noGrade.length){
+      const items = result.warnings.concat(invalid.map(r=>`${r.name} (${r.studentId}): ${r.detail}`), noGrade.map(r=>`${r.name} (${r.studentId}): ${r.detail || 'nessun voto individuato; nessuna modifica'}`));
       html += '<div class="grade-import-note"><strong>Controlli e avvisi</strong><ul>' + items.map(x=>`<li>${esc(x)}</li>`).join('') + '</ul></div>';
     }
-    if(duplicate){
-      html += '<div class="grade-import-warnings"><strong>Attenzione: possibile doppia importazione.</strong><ul>' +
-        result.duplicateRecords.map(r=>`<li>${esc(r.reason)}</li>`).join('') +
-        '</ul>Se continui, i punti verranno aggiunti una seconda volta.</div>';
-    }
-    html += '<table class="grade-import-table"><thead><tr><th>Studente</th><th>ID database</th><th>Voto</th><th>Punti</th><th>Casata</th><th>Esito</th></tr></thead><tbody>';
-    const previewRows = result.rows;
-    html += previewRows.map(r=>{
-      const status = r.kind==='grade' ? 'Da importare' :
-        r.kind==='absent' ? 'Assente: saltato' :
-        r.kind==='invalid' ? 'Voto non valido' : 'Voto non individuato';
-      const cls = r.kind==='grade' ? 'grade-import-status-ok' : r.kind==='invalid' ? 'grade-import-status-error' : 'grade-import-status-skip';
-      return `<tr><td>${esc(r.name || '—')}</td><td>${esc(r.studentId || '—')}</td><td>${r.kind==='grade' ? esc(r.grade) : '—'}</td><td>${r.kind==='grade' ? esc(pointLabel(r.points)) : '—'}</td><td>${esc(houses[r.student && r.student.house] || 'Non assegnata')}</td><td class="${cls}">${esc(status)}${r.detail ? ': '+esc(r.detail) : ''}</td></tr>`;
+    html += '<p class="class-manager-note">Excel è la fonte di riferimento: i voti modificati aggiornano la voce già registrata e il totale punti, senza duplicarla. Le righe identiche non vengono toccate.</p>';
+    html += '<table class="grade-import-table"><thead><tr><th>Studente</th><th>ID database</th><th>Voto Excel</th><th>Punti</th><th>Casata</th><th>Esito</th></tr></thead><tbody>';
+    html += result.rows.map(r=>{
+      const status = r.kind==='invalid' ? 'Voto non valido' : r.kind==='notfound' ? 'Nessuna modifica' :
+        r.action==='add' && r.kind==='grade' ? 'Nuovo voto' :
+        r.action==='add' && r.kind==='absent' ? 'Registra assenza' :
+        r.action==='update' ? 'Aggiorna voce esistente' : 'Già aggiornato: invariato';
+      const cls = r.kind==='invalid' ? 'grade-import-status-error' : (r.action==='add' || r.action==='update') ? 'grade-import-status-ok' : 'grade-import-status-skip';
+      const gradeLabel = r.kind==='grade' ? esc(r.grade) : r.kind==='absent' ? 'Assente' : '—';
+      return `<tr><td>${esc(r.name || '—')}</td><td>${esc(r.studentId || '—')}</td><td>${gradeLabel}</td><td>${r.kind==='grade' ? esc(pointLabel(r.points)) : '0'}</td><td>${esc(houses[r.student && r.student.house] || 'Non assegnata')}</td><td class="${cls}">${esc(status)}${r.detail ? ': '+esc(r.detail) : ''}</td></tr>`;
     }).join('');
     html += '</tbody></table>';
     target.innerHTML = html;
     target.style.display = 'block';
-    $('gradeImportDuplicateConfirmWrap').style.display = duplicate ? 'flex' : 'none';
+    $('gradeImportDuplicateConfirmWrap').style.display = 'none';
     const apply = $('applyGradeImportBtn');
     apply.style.display = 'inline-block';
-    apply.textContent = `✓ Conferma e assegna ${valid.length} ${valid.length===1?'voto':'voti'}`;
-    apply.disabled = fatal > 0 || valid.length === 0 || (duplicate && !$('gradeImportDuplicateConfirm').checked);
-    if(fatal) setGradeImportStatus('Controlli non superati: nessun punto è stato assegnato.',true);
-    else if(duplicate) setGradeImportStatus('Anteprima pronta, ma è stata rilevata una possibile doppia importazione.',true);
-    else setGradeImportStatus('Anteprima pronta: nessun punto è stato ancora assegnato.');
+    apply.textContent = `✓ Conferma ${actionable} ${actionable===1?'modifica':'modifiche'}`;
+    apply.disabled = fatal > 0 || actionable === 0;
+    if(fatal) setGradeImportStatus('Controlli non superati: nessuna modifica verrà applicata.',true);
+    else if(actionable===0) setGradeImportStatus('Nessuna modifica necessaria: il sito è già allineato al file Excel.');
+    else setGradeImportStatus('Anteprima pronta: nessuna modifica è stata ancora applicata. Conferma per sincronizzare i voti con Excel.');
     updateGradeImportAvailability();
   }
   async function readGradeImportFile(file){
@@ -1918,13 +1918,32 @@ input, select, .authbox input {
       const fingerprint=await gradeFileFingerprint(file);
       const testName=String($('gradeImportTestName').value || '').trim();
       const classKey=gradeImportClassKey(c);
-      const log=getGradeImportLog().filter(r=>r.classKey===classKey);
-      const duplicateRecords=[];
-      if(log.some(r=>r.fingerprint===fingerprint)) duplicateRecords.push({reason:'Questo stesso file risulta già importato per questa classe.'});
-      if(log.some(r=>normalizeImportText(r.testName)===normalizeImportText(testName))) duplicateRecords.push({reason:`La verifica “${testName}” risulta già importata per questa classe.`});
-      // Se una riga è presente due volte nel foglio, non è affidabile neppure il conteggio dei presenti.
+      // La chiave incrementale è studente + nome verifica. Il file Excel è autorevole:
+      // stesso voto = nessuna azione; voto cambiato = aggiorna la voce e la differenza punti;
+      // assenza = voce a zero punti, sostituibile in seguito con il voto di recupero.
+      for(const entry of rowsOut){
+        if(entry.kind==='notfound' || entry.kind==='invalid') continue;
+        const st=entry.student;
+        const matches=(st.history||[]).filter(h=>normalizeImportText(h.testName || h.reference)===normalizeImportText(testName));
+        if(matches.length>1){
+          fatalIssues.push(`${entry.name}: esistono ${matches.length} voci storiche associate alla verifica “${testName}”. Correggi lo storico prima di importare per evitare modifiche ambigue.`);
+          entry.action='blocked';
+          continue;
+        }
+        entry.existingHistory=matches[0] || null;
+        if(!matches.length){ entry.action='add'; continue; }
+        const old=matches[0];
+        const oldIsAbsent=normalizeImportText(old.grade)==='assente' || normalizeImportText(old.grade)==='assenza';
+        const newIsAbsent=entry.kind==='absent';
+        const oldGrade=Number(old.grade);
+        const sameGrade=!newIsAbsent && !oldIsAbsent && Number.isFinite(oldGrade) && oldGrade===Number(entry.grade);
+        if((newIsAbsent && oldIsAbsent) || sameGrade){ entry.action='unchanged'; }
+        else { entry.action='update'; }
+      }
+      // Le righe non presenti nel foglio non vengono eliminate: il foglio dovrebbe essere completo,
+      // ma per sicurezza l'importazione non cancella dati solo perché manca una riga.
       const result={classKey,classId:String(c.id),className:c.name,schoolYear:c.schoolYear || DEFAULT_YEAR,
-        fileName:file.name,fingerprint,testName,rows:rowsOut,fatalIssues,warnings,missingStudents,duplicateRecords};
+        fileName:file.name,fingerprint,testName,rows:rowsOut,fatalIssues,warnings,missingStudents};
       pendingGradeImport=result;
       renderGradeImportPreview(result);
     } catch(error) {
@@ -1942,48 +1961,62 @@ input, select, .authbox input {
       clearGradeImportPreview('La classe è cambiata. Seleziona nuovamente il file.');
       return;
     }
-    if(result.fatalIssues.length || !result.rows.some(r=>r.kind==='grade')){
+    if(result.fatalIssues.length){
       showToast('Importazione bloccata: controlla gli avvisi nell’anteprima.');
       return;
     }
-    if(result.duplicateRecords.length && !$('gradeImportDuplicateConfirm').checked){
-      showToast('Conferma l’avviso di possibile doppia importazione prima di procedere.');
-      return;
-    }
     const timestamp=Date.now();
-    let count=0, totalPoints=0;
+    let added=0, updated=0, absences=0, unchanged=0, totalDelta=0;
     for(const entry of result.rows){
-      if(entry.kind!=='grade') continue;
+      if(entry.kind==='notfound' || entry.kind==='invalid') continue;
       const st=c.students.find(x=>String(x.dbId || '').trim()===entry.studentId);
       if(!st) continue;
-      const p=score(entry.grade);
-      markClassChanged();
-      st.points=(Number(st.points)||0)+p;
-      if(p!==0) markHouseCupDirty();
       st.history=Array.isArray(st.history)?st.history:[];
-      st.history.push({
-        id:timestamp+count, date:new Date().toISOString(), grade:entry.grade, points:p,
-        source:'Importazione Excel', testName:result.testName, reference:result.testName
-      });
-      count++; totalPoints+=p;
+      const newGrade=entry.kind==='absent' ? 'Assente' : Number(entry.grade);
+      const newPoints=entry.kind==='absent' ? 0 : score(entry.grade);
+      if(entry.action==='unchanged'){ unchanged++; continue; }
+      markClassChanged();
+      if(entry.action==='add'){
+        st.history.push({
+          id:timestamp+added+updated+absences, date:new Date().toISOString(), grade:newGrade, points:newPoints,
+          source:'Importazione Excel', testName:result.testName, reference:result.testName
+        });
+        st.points=(Number(st.points)||0)+newPoints;
+        totalDelta+=newPoints;
+        if(entry.kind==='absent') absences++; else added++;
+      } else if(entry.action==='update' && entry.existingHistory){
+        const old=entry.existingHistory;
+        const oldPoints=Number(old.points)||0;
+        const delta=newPoints-oldPoints;
+        old.grade=newGrade;
+        old.points=newPoints;
+        old.source='Importazione Excel';
+        old.testName=result.testName;
+        old.reference=result.testName;
+        old.date=new Date().toISOString();
+        st.points=(Number(st.points)||0)+delta;
+        totalDelta+=delta;
+        updated++;
+      }
+      if(entry.action==='add' || entry.action==='update') markHouseCupDirty();
     }
-    if(!count){
-      showToast('Nessun voto applicato: non sono state apportate modifiche.');
+    if(!added && !updated && !absences){
+      closeGradeImportPanel();
+      showToast('Nessuna modifica necessaria: i voti sono già allineati al file Excel.');
       return;
     }
     const log=getGradeImportLog();
     log.push({classKey:result.classKey,className:result.className,schoolYear:result.schoolYear,
       testName:result.testName,fileName:result.fileName,fingerprint:result.fingerprint,
-      importedAt:new Date().toISOString(),students:count});
-    let logSaved=true;
-    try { localStorage.setItem(GRADE_IMPORT_LOG_KEY,JSON.stringify(log)); }
-    catch(e){ logSaved=false; console.warn('Registro locale importazioni non salvato:',e); }
+      importedAt:new Date().toISOString(),added,updated,absences,unchanged,pointsDelta:totalDelta});
+    try { localStorage.setItem(GRADE_IMPORT_LOG_KEY,JSON.stringify(log.slice(-500))); }
+    catch(e){ console.warn('Registro locale importazioni non salvato:',e); }
     save();
     render();
     renderTeacher();
     renderHouseStudents();
     closeGradeImportPanel();
-    showToast(`Importazione completata: ${count} voti registrati${!logSaved?' (attenzione: non è stato possibile memorizzare il controllo anti-duplicato)':''}.`);
+    showToast(`Excel sincronizzato: ${added} nuovi voti, ${absences} assenze registrate, ${updated} voci aggiornate, ${unchanged} già invariat${unchanged===1?'a':'e'}.`);
   }
 
   function totals(students = state.students){
