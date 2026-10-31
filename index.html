@@ -1101,7 +1101,7 @@ input, select, .authbox input {
 
 
 /* Fascicolo personale dello studente */
-.student-profile-view { display:none; max-width:980px; margin:24px auto; }
+.student-profile-view { display:none; width:100%; max-width:none; margin:22px 0 28px; box-sizing:border-box; }
 .student-profile-view.active { display:block; }
 .student-profile-head { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:22px; border:1px solid var(--gold); border-radius:18px; background:linear-gradient(145deg,#202536,#11141e); }
 .student-profile-name { margin:0 0 8px; font-size:clamp(25px,4vw,38px); color:var(--gold); }
@@ -1228,6 +1228,19 @@ input, select, .authbox input {
     </div>
   </div>
 
+  <section class="card student-profile-view" id="studentProfileView" aria-live="polite">
+    <div style="display:flex;justify-content:flex-start;margin-bottom:14px"><button type="button" class="btn" id="studentProfileBack">Indietro</button></div>
+    <div class="student-profile-head">
+      <div><h2 class="student-profile-name" id="studentProfileName">Studente</h2><div class="student-profile-meta" id="studentProfileMeta"></div></div>
+      <div class="student-profile-house"><span id="studentProfileSigil">✦</span><strong id="studentProfileHousePoints">0 pt</strong></div>
+    </div>
+    <div class="student-profile-actions">
+      <button type="button" class="btn primary" id="studentProfileGradesBtn">📚 Storico voti</button>
+      <button type="button" class="btn" id="studentProfileStickersBtn">✨ Collezione sticker</button>
+    </div>
+    <div class="student-profile-panel active" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
+    <div class="student-profile-panel" id="studentProfileStickers"><div id="studentProfileStickersContent">Caricamento della collezione…</div></div>
+  </section>
   <!-- Le Casate e la Coppa sono già visibili: non serve un menu duplicato. -->
 
   <!-- LE CASATE -->
@@ -1319,19 +1332,6 @@ input, select, .authbox input {
     <div id="classList" class="list"></div>
   </section>
 
-  <section class="card student-profile-view" id="studentProfileView" aria-live="polite">
-    <div style="display:flex;justify-content:flex-start;margin-bottom:14px"><button type="button" class="btn" id="studentProfileBack">← Torna a Gestione studenti</button></div>
-    <div class="student-profile-head">
-      <div><h2 class="student-profile-name" id="studentProfileName">Studente</h2><div class="student-profile-meta" id="studentProfileMeta"></div></div>
-      <div class="student-profile-house"><span id="studentProfileSigil">✦</span><strong id="studentProfileHousePoints">0 pt</strong></div>
-    </div>
-    <div class="student-profile-actions">
-      <button type="button" class="btn primary" id="studentProfileGradesBtn">📚 Storico voti</button>
-      <button type="button" class="btn" id="studentProfileStickersBtn">✨ Collezione sticker</button>
-    </div>
-    <div class="student-profile-panel active" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
-    <div class="student-profile-panel" id="studentProfileStickers"><div id="studentProfileStickersContent">Caricamento della collezione…</div></div>
-  </section>
 
   <!-- ASSEGNA PUNTI -->
   <section class="card" id="pointsCard" style="display:none">
@@ -2807,6 +2807,8 @@ if (inCastle) {
     if(!cls) return;
     openedStudentProfileId = String(student.id);
     profilePreviousClassScroll = window.scrollY;
+    $('classManager').style.display = 'none';
+    $('teacherControls').style.display = 'none';
     $('classCard').style.display = 'none';
     $('pointsCard').style.display = 'none';
     $('houses').style.display = 'none';
@@ -2817,7 +2819,7 @@ if (inCastle) {
     $('teacherWorkControls').style.display = 'none';
     $('studentProfileView').classList.add('active');
     $('studentProfileName').textContent = student.name;
-    $('studentProfileMeta').textContent = `${cls.name} · Anno scolastico ${cls.schoolYear || 'non indicato'} · ${student.house ? houses[student.house] : 'Casata non assegnata'} · Media ${(() => { const grades=(student.history||[]).map(h=>Number(String(h.grade).replace(',','.'))).filter(n=>Number.isFinite(n)&&n>=1&&n<=10); return grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toLocaleString('it-IT',{maximumFractionDigits:2}) : '—'; })()}`;
+    $('studentProfileMeta').textContent = `${cls.name} · ${cls.schoolYear || 'anno non indicato'} · ${student.house ? houses[student.house] : 'Casata non assegnata'} · Media ${(() => { const grades=(student.history||[]).map(h=>Number(String(h.grade).replace(',','.'))).filter(n=>Number.isFinite(n)&&n>=1&&n<=10); return grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toLocaleString('it-IT',{maximumFractionDigits:2}) : '—'; })()}`;
     const totalsNow = totals(state.students);
     $('studentProfileSigil').textContent = houseSigils[student.house] || '🎩';
     $('studentProfileHousePoints').textContent = `${formatPoints(student.house ? totalsNow[student.house] : 0)} pt`;
