@@ -1337,9 +1337,12 @@ input, select, .authbox input {
   <section class="card" id="pointsCard" style="display:none">
     <h3>Assegna punti tramite voto</h3>
     <div style="display:grid;gap:12px;max-width:520px;margin:auto">
-      <label style="font-family:system-ui,sans-serif">Studente
-        <select id="pointsStudent" style="width:100%;margin-top:5px;"></select>
-      </label>
+      <div style="display:flex;align-items:flex-end;gap:8px;width:100%;min-width:0">
+        <label style="font-family:system-ui,sans-serif;flex:1;min-width:0">Studente
+          <select id="pointsStudent" style="width:100%;margin-top:5px;"></select>
+        </label>
+        <button type="button" class="btn" id="studentHistoryFromPointsBtn" title="Apri lo storico dello studente" aria-label="Apri lo storico dello studente" style="flex:0 0 46px;width:46px;height:42px;padding:0;font-size:20px" disabled>📜</button>
+      </div>
       <label style="font-family:system-ui,sans-serif">Voto
         <input id="gradeInput" type="number" min="1" max="10" step="0.5" placeholder="es. 8,5 (premi Invio)" style="width:100%;margin-top:5px;">
       </label>
@@ -2759,6 +2762,7 @@ if (inCastle) {
     $('addStudent').disabled = readOnly;
     // In archivio il menu resta consultabile per cambiare studente e leggere lo storico.
     $('pointsStudent').disabled = false;
+    $('studentHistoryFromPointsBtn').disabled = !state.students.some(st => String(st.id) === String($('pointsStudent').value));
     $('gradeInput').disabled = readOnly;
     $('saveGrade').disabled = readOnly;
     const selectedPointsStudent = state.students.find(st => String(st.id) === String($('pointsStudent').value) && !!st.house);
@@ -2787,6 +2791,7 @@ if (inCastle) {
 
   let openedStudentProfileId = null;
   let profilePreviousClassScroll = 0;
+  let profileReturnToPoints = false;
   const houseSigils = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
   function showStudentProfilePanel(which){
     const grades = which === 'grades';
@@ -2800,11 +2805,12 @@ if (inCastle) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('it-IT');
   }
-  async function openStudentProfile(studentId){
+  async function openStudentProfile(studentId, returnToPoints = false){
     const student = state.students.find(st => String(st.id) === String(studentId));
     if(!student) return;
     const cls = activeClass();
     if(!cls) return;
+    profileReturnToPoints = !!returnToPoints;
     openedStudentProfileId = String(student.id);
     profilePreviousClassScroll = window.scrollY;
     $('classManager').style.display = 'none';
@@ -2863,7 +2869,6 @@ if (inCastle) {
   }
   function closeStudentProfile(){
     $('studentProfileView').classList.remove('active');
-    $('classCard').style.display = 'block';
     $('classManager').style.display = 'block';
     $('teacherControls').style.display = 'flex';
     $('houseCupArchivePanel').style.display = 'none';
@@ -2872,12 +2877,24 @@ if (inCastle) {
     $('teacherWorkControls').style.display = '';
     $('castleStudentSearch').style.display = teacherView === 'castle' ? 'block' : 'none';
     $('castleClassScores').style.display = teacherView === 'castle' ? 'block' : 'none';
+    if(profileReturnToPoints){
+      $('classCard').style.display = 'none';
+      $('pointsCard').style.display = 'block';
+    }else{
+      $('classCard').style.display = 'block';
+      $('pointsCard').style.display = 'none';
+    }
+    profileReturnToPoints = false;
     openedStudentProfileId = null;
     window.scrollTo({top:profilePreviousClassScroll,behavior:'smooth'});
   }
   $('studentProfileBack').addEventListener('click',closeStudentProfile);
   $('studentProfileGradesBtn').addEventListener('click',()=>showStudentProfilePanel('grades'));
   $('studentProfileStickersBtn').addEventListener('click',()=>showStudentProfilePanel('stickers'));
+  $('studentHistoryFromPointsBtn').addEventListener('click',()=>{
+    const studentId = $('pointsStudent').value;
+    if(studentId) openStudentProfile(studentId, true);
+  });
 
   function setRole(r){
     role = r;
@@ -4713,6 +4730,7 @@ $('reviewHousesBtn').onclick = () => {
   };
 
   $('pointsStudent').onchange = () => {
+    $('studentHistoryFromPointsBtn').disabled = !$('pointsStudent').value;
     history();
     if(role === 'teacher' && teacherView === 'class' && $('pointsCard').style.display !== 'none' && !activeIsArchived()) $('gradeInput').focus({ preventScroll: true });
   };
