@@ -1099,6 +1099,31 @@ input, select, .authbox input {
 .grade-import-status-ok { color:#a5e0b4; } .grade-import-status-skip { color:#f0d47e; } .grade-import-status-error { color:#ffb4ae; }
 @media(max-width:700px) { .grade-import-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } #gradeImportCard .btn { width:100%; } .grade-import-table { font-size:11px; } }
 
+
+/* Fascicolo personale dello studente */
+.student-profile-view { display:none; max-width:980px; margin:24px auto; }
+.student-profile-view.active { display:block; }
+.student-profile-head { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:22px; border:1px solid var(--gold); border-radius:18px; background:linear-gradient(145deg,#202536,#11141e); }
+.student-profile-name { margin:0 0 8px; font-size:clamp(25px,4vw,38px); color:var(--gold); }
+.student-profile-meta { color:var(--muted); font:14px/1.7 system-ui,sans-serif; }
+.student-profile-house { text-align:center; min-width:110px; font-size:46px; }
+.student-profile-house strong { display:block; font:700 18px system-ui,sans-serif; color:var(--gold); }
+.student-profile-actions { display:flex; gap:10px; flex-wrap:wrap; margin:16px 0; }
+.student-profile-panel { display:none; padding:18px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
+.student-profile-panel.active { display:block; }
+.student-profile-grade { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px; border-bottom:1px solid #3f3b32; font:14px/1.5 system-ui,sans-serif; }
+.student-sticker-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; }
+.student-sticker { perspective:900px; min-height:210px; cursor:pointer; }
+.student-sticker-inner { position:relative; width:100%; height:210px; transition:transform .55s; transform-style:preserve-3d; }
+.student-sticker.flipped .student-sticker-inner { transform:rotateY(180deg); }
+.student-sticker-face { position:absolute; inset:0; backface-visibility:hidden; border:1px solid var(--gold); border-radius:12px; overflow:hidden; background:#0c1019; display:flex; align-items:center; justify-content:center; }
+.student-sticker-face img { width:100%; height:100%; object-fit:contain; }
+.student-sticker-back { transform:rotateY(180deg); padding:14px; text-align:center; flex-direction:column; gap:8px; font:13px/1.5 system-ui,sans-serif; color:var(--paper); }
+.student-sticker-back strong { color:var(--gold); font-size:15px; }
+.student-profile-link { border:0; padding:0; background:none; color:var(--paper); font:700 16px Georgia,serif; text-decoration:underline dotted var(--gold); text-underline-offset:4px; cursor:pointer; }
+.student-profile-link:hover { color:var(--gold); }
+@media(max-width:600px){.student-profile-head{align-items:flex-start;padding:16px}.student-profile-house{min-width:74px;font-size:36px}.student-profile-house strong{font-size:15px}.student-sticker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -1294,6 +1319,20 @@ input, select, .authbox input {
     <div id="classList" class="list"></div>
   </section>
 
+  <section class="card student-profile-view" id="studentProfileView" aria-live="polite">
+    <div style="display:flex;justify-content:flex-start;margin-bottom:14px"><button type="button" class="btn" id="studentProfileBack">← Torna a Gestione studenti</button></div>
+    <div class="student-profile-head">
+      <div><h2 class="student-profile-name" id="studentProfileName">Studente</h2><div class="student-profile-meta" id="studentProfileMeta"></div></div>
+      <div class="student-profile-house"><span id="studentProfileSigil">✦</span><strong id="studentProfileHousePoints">0 pt</strong></div>
+    </div>
+    <div class="student-profile-actions">
+      <button type="button" class="btn primary" id="studentProfileGradesBtn">📚 Storico voti</button>
+      <button type="button" class="btn" id="studentProfileStickersBtn">✨ Collezione sticker</button>
+    </div>
+    <div class="student-profile-panel active" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
+    <div class="student-profile-panel" id="studentProfileStickers"><div id="studentProfileStickersContent">Caricamento della collezione…</div></div>
+  </section>
+
   <!-- ASSEGNA PUNTI -->
   <section class="card" id="pointsCard" style="display:none">
     <h3>Assegna punti tramite voto</h3>
@@ -1378,6 +1417,8 @@ input, select, .authbox input {
   // Configurazione del client Supabase: usare esclusivamente la chiave pubblicabile.
   const SUPABASE_URL = 'https://gzdtjfzehhthvmdvbhpe.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uYRroVRtg9BiaHdUjcjtBQ_eCICtNHi';
+  // Attivare dopo aver collegato Archivio Sticker allo stesso progetto Supabase.
+  const STICKER_ARCHIVE_LINK_READY = false;
   // La pagina torna sempre in modalita pubblica al ricaricamento: non conservare la sessione docente nel localStorage del browser condiviso.
   const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false } }) || null;
   let supabaseUser = null;
@@ -2218,6 +2259,9 @@ input, select, .authbox input {
     $('houseCupArchivePanel').style.display = 'block';
     $('classCard').style.display = 'none';
     $('pointsCard').style.display = 'none';
+    $('classManager').style.display = 'none';
+    $('teacherControls').style.display = 'none';
+    $('houseCupArchivePanel').style.display = 'none';
     $('houseStudentsPanel').style.display = 'none';
     selectedHouse = null;
     $('manageBtn').classList.remove('primary');
@@ -2688,7 +2732,7 @@ if (inCastle) {
     const archivedClass = activeIsArchived();
     $('classList').innerHTML = visible.map(st =>
       `<div class="row" ${archivedClass ? `data-history-student="${esc(st.id)}" style="cursor:pointer" title="Consulta lo storico dello studente"` : ''}>
-        <b>${esc(st.name)}</b>
+        <b><button type="button" class="student-profile-link" data-profile-student="${esc(st.id)}">${esc(st.name)}</button></b>
         <span class="${st.house ? '' : 'unassigned'}" style="padding:6px 10px;border-radius:8px;border:1px solid #5f5236;background:#0f1118;">${st.house ? houses[st.house] : '🎩 Da smistare'}</span>
         <span>${formatPoints(st.points || 0)} pt</span>
         <div class="student-actions"><button type="button" class="btn small" data-edit="${esc(st.id)}">✎ Rinomina</button>${st.house ? `<button type="button" class="btn small" data-assign-points="${esc(st.id)}">🏆 Punti</button><button type="button" class="btn small commend" data-commend="${esc(st.id)}">✨ Bonus +1</button><button type="button" class="btn small" data-malus="${esc(st.id)}">⚖️ Malus −1</button>` : ''}<button type="button" class="btn small remove" data-id="${esc(st.id)}">🗑 Rimuovi</button></div>
@@ -2721,7 +2765,7 @@ if (inCastle) {
     $('commendBtn').disabled = readOnly || !selectedPointsStudent;
     $('malusBtn').disabled = readOnly || !selectedPointsStudent;
     $('resetBtn').disabled = role === 'teacher' && teacherView === 'castle' ? !state.classes.length : readOnly;
-    $('classList').querySelectorAll('button').forEach(button => button.disabled = readOnly);
+    $('classList').querySelectorAll('button:not([data-profile-student])').forEach(button => button.disabled = readOnly);
     history();
   }
 
@@ -2740,6 +2784,98 @@ if (inCastle) {
         </div>`;
       }).join('') || '<div>Nessun voto registrato.</div>') : '';
   }
+
+  let openedStudentProfileId = null;
+  let profilePreviousClassScroll = 0;
+  const houseSigils = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
+  function showStudentProfilePanel(which){
+    const grades = which === 'grades';
+    $('studentProfileGrades').classList.toggle('active', grades);
+    $('studentProfileStickers').classList.toggle('active', !grades);
+    $('studentProfileGradesBtn').classList.toggle('primary', grades);
+    $('studentProfileStickersBtn').classList.toggle('primary', !grades);
+  }
+  function profileDate(value){
+    if(!value) return 'Data non indicata';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('it-IT');
+  }
+  async function openStudentProfile(studentId){
+    const student = state.students.find(st => String(st.id) === String(studentId));
+    if(!student) return;
+    const cls = activeClass();
+    if(!cls) return;
+    openedStudentProfileId = String(student.id);
+    profilePreviousClassScroll = window.scrollY;
+    $('classCard').style.display = 'none';
+    $('pointsCard').style.display = 'none';
+    $('houses').style.display = 'none';
+    $('ranking').style.display = 'none';
+    $('houseStudentsPanel').style.display = 'none';
+    $('castleStudentSearch').style.display = 'none';
+    $('castleClassScores').style.display = 'none';
+    $('teacherWorkControls').style.display = 'none';
+    $('studentProfileView').classList.add('active');
+    $('studentProfileName').textContent = student.name;
+    $('studentProfileMeta').textContent = `${cls.name} · Anno scolastico ${cls.schoolYear || 'non indicato'} · ${student.house ? houses[student.house] : 'Casata non assegnata'} · Media ${(() => { const grades=(student.history||[]).map(h=>Number(String(h.grade).replace(',','.'))).filter(n=>Number.isFinite(n)&&n>=1&&n<=10); return grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toLocaleString('it-IT',{maximumFractionDigits:2}) : '—'; })()}`;
+    const totalsNow = totals(state.students);
+    $('studentProfileSigil').textContent = houseSigils[student.house] || '🎩';
+    $('studentProfileHousePoints').textContent = `${formatPoints(student.house ? totalsNow[student.house] : 0)} pt`;
+    const entries = (student.history || []).slice().sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+    $('studentProfileGradesContent').innerHTML = entries.length ? entries.map(h=>{
+      const gradeLabel = h.grade === 'Encomio speciale' ? 'Bonus' : h.grade === 'Malus' ? 'Malus' : `Voto ${esc(h.grade)}`;
+      const reference = String(h.reference || h.testName || '').trim();
+      return `<div class="student-profile-grade"><span><strong>${gradeLabel}</strong>${reference ? `<span style="display:block;color:var(--muted)">${esc(reference)}</span>` : ''}<span style="display:block;color:var(--muted)">${profileDate(h.date)}</span></span><strong>${esc(Number(h.points)>=0?'+':'')}${esc(pointLabel(h.points))}</strong></div>`;
+    }).join('') : '<p>Nessun voto registrato.</p>';
+    $('studentProfileStickersContent').textContent = 'Caricamento della collezione…';
+    showStudentProfilePanel('grades');
+    window.scrollTo({top:0,behavior:'smooth'});
+    await loadStudentProfileStickers(student, cls);
+  }
+  async function loadStudentProfileStickers(student, cls){
+    const target = $('studentProfileStickersContent');
+    if(!STICKER_ARCHIVE_LINK_READY){ target.textContent='La sezione Collezione sticker è pronta. Il caricamento sarà attivato quando collegheremo Archivio Sticker a questo progetto Supabase; per ora gli indirizzi dei due progetti restano invariati.'; return; }
+    if(!supabase){ target.textContent='Connessione Supabase non disponibile.'; return; }
+    try{
+      const {data:rows,error}=await supabase.from('sticker_assignment_history')
+        .select('id,student_id,class_id,sticker_id,grade,assigned_at,test_name,test_date,test_key,student_points,house_total,is_absent')
+        .eq('student_id',String(student.dbId || student.id)).eq('class_id',String(cls.dbId || cls.id))
+        .eq('is_absent',false).not('sticker_id','is',null).order('test_date',{ascending:true}).order('assigned_at',{ascending:true});
+      if(error) throw error;
+      if(!rows || !rows.length){target.textContent='Non ci sono ancora sticker registrati per questo studente. La collezione comparirà dopo aver collegato Archivio Sticker a questo progetto Supabase e registrato una prova.';return;}
+      const ids=[...new Set(rows.map(r=>r.sticker_id).filter(Boolean))];
+      const {data:meta,error:metaError}=await supabase.from('sticker_archive').select('id,file_path').in('id',ids);
+      if(metaError) throw metaError;
+      const paths=(meta||[]).map(x=>x.file_path).filter(Boolean);
+      let signed=[];
+      if(paths.length){const result=await supabase.storage.from('archivio-sticker').createSignedUrls(paths,900);if(result.error) throw result.error;signed=result.data||[];}
+      const urlByPath=new Map(signed.filter(x=>x.path&&x.signedUrl).map(x=>[x.path,x.signedUrl]));
+      const pathById=new Map((meta||[]).map(x=>[String(x.id),x.file_path]));
+      target.innerHTML='<div class="student-sticker-grid">'+rows.map(r=>{
+        const path=pathById.get(String(r.sticker_id));const url=path&&urlByPath.get(path);const title=String(r.test_name||'Prova senza nome');
+        const points=Number(r.student_points);const total=Number(r.house_total);
+        return `<article class="student-sticker" tabindex="0" role="button" aria-label="Gira lo sticker della prova ${esc(title)}"><div class="student-sticker-inner"><div class="student-sticker-face">${url?`<img src="${esc(url)}" alt="Sticker assegnato per ${esc(title)}">`:'Sticker non disponibile'}</div><div class="student-sticker-face student-sticker-back"><strong>${esc(title)}</strong><span>${profileDate(r.test_date||r.assigned_at)}</span><span>Punti studente: ${Number.isFinite(points)?(points>0?'+':'')+points:'—'}</span><span>Totale casata: ${Number.isFinite(total)?total:'—'} pt</span></div></div></article>`;
+      }).join('')+'</div>';
+      target.querySelectorAll('.student-sticker').forEach(card=>{const flip=()=>card.classList.toggle('flipped');card.addEventListener('click',flip);card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();flip();}});});
+    }catch(error){console.warn('Lettura fascicolo sticker non riuscita:',error);target.textContent='Non riesco ancora a leggere gli sticker. Verifica che il progetto Supabase contenga le tabelle sticker_assignment_history e sticker_archive e il bucket archivio-sticker. Dettaglio: '+(error.message||'errore sconosciuto');}
+  }
+  function closeStudentProfile(){
+    $('studentProfileView').classList.remove('active');
+    $('classCard').style.display = 'block';
+    $('classManager').style.display = 'block';
+    $('teacherControls').style.display = 'flex';
+    $('houseCupArchivePanel').style.display = 'none';
+    $('houses').style.display = '';
+    $('ranking').style.display = 'block';
+    $('teacherWorkControls').style.display = '';
+    $('castleStudentSearch').style.display = teacherView === 'castle' ? 'block' : 'none';
+    $('castleClassScores').style.display = teacherView === 'castle' ? 'block' : 'none';
+    openedStudentProfileId = null;
+    window.scrollTo({top:profilePreviousClassScroll,behavior:'smooth'});
+  }
+  $('studentProfileBack').addEventListener('click',closeStudentProfile);
+  $('studentProfileGradesBtn').addEventListener('click',()=>showStudentProfilePanel('grades'));
+  $('studentProfileStickersBtn').addEventListener('click',()=>showStudentProfilePanel('stickers'));
 
   function setRole(r){
     role = r;
@@ -3913,6 +4049,8 @@ $('promoteClassBtn').onclick = async () => {
   };
 
   $('classList').onclick = e => {
+    const profileButton = e.target.closest('[data-profile-student]');
+    if(profileButton){ e.preventDefault(); e.stopPropagation(); openStudentProfile(profileButton.dataset.profileStudent); return; }
     if(activeIsArchived()){
       const archivedStudent = e.target.closest('[data-history-student]');
       if(archivedStudent){
