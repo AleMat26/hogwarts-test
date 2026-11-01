@@ -1416,10 +1416,10 @@ input, select, .authbox input {
   'use strict';
   
   const houses = { g: 'Grifondoro', t: 'Tassorosso', r: 'Corvonero', s: 'Serpeverde' };
-  const KEY = 'hogwartsState_test';
+  const KEY = 'hogwartsState';
   // Configurazione del client Supabase: usare esclusivamente la chiave pubblicabile.
-  const SUPABASE_URL = 'https://gzdtjfzehhthvmdvbhpe.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uYRroVRtg9BiaHdUjcjtBQ_eCICtNHi';
+  const SUPABASE_URL = 'https://wfcujsqswmmapddnzmew.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_hZbJF0N-cYDwWLIKI8g79Q_IHGxjC2G';
   // Archivio Sticker usa lo stesso progetto Supabase ufficiale: il client autenticato
   // di Hogwarts legge lo storico e genera URL temporanei per le immagini private.
   const STICKER_ARCHIVE_LINK_READY = true;
@@ -1436,7 +1436,7 @@ input, select, .authbox input {
   let publicScores = null;
   // La homepage non mostra classi locali finché Supabase non ha risposto.
   let publicDataStatus = 'loading'; // 'loading', 'loaded', 'error'
-  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId_test';
+  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId';
   const ALL_ACTIVE_CLASSES = '__all_active_classes__';
   const $ = id => document.getElementById(id);
   let toastTimer = null;
@@ -1467,6 +1467,7 @@ input, select, .authbox input {
   // La homepage mostra l'accesso all'Albo d'oro solo se esiste almeno una Coppa registrata.
   let publicHasAlboRecords = false;
   let publicArchiveView = false;
+  let teacherArchiveView = false;
 
   const DEFAULT_YEAR = '2026–2027';
   const romanValues = { I:1, V:5, X:10, L:50, C:100, D:500, M:1000 };
@@ -2099,7 +2100,7 @@ input, select, .authbox input {
     const inCastle = role === 'teacher' && teacherView === 'castle';
     // Il Castello docente e l'Albo d'oro pubblico mostrano l'archivio completo.
     // Soltanto quando si consulta una singola classe si applica il filtro classe/anno.
-    const showAllRecords = inCastle || publicArchiveView;
+    const showAllRecords = inCastle || publicArchiveView || teacherArchiveView;
     // Non usare activeClass() qui: in caso di ID numerico/stringa non coincidente
     // può ricadere sulla prima classe e mostrare la sua Coppa nelle altre classi.
     // Per l'Albo d'oro bisogna identificare in modo esatto la classe selezionata.
@@ -2132,14 +2133,14 @@ input, select, .authbox input {
           : 'Iscrivi i punteggi attuali della classe all’Albo d’oro.';
       }
     }
-    if(actions) actions.style.display = role === 'teacher' && !inCastle ? 'flex' : 'none';
-    if(recordBtn) recordBtn.style.display = role === 'teacher' && !inCastle ? '' : 'none';
+    if(actions) actions.style.display = role === 'teacher' && !inCastle && !teacherArchiveView ? 'flex' : 'none';
+    if(recordBtn) recordBtn.style.display = role === 'teacher' && !inCastle && !teacherArchiveView ? '' : 'none';
     const resetActions = $('houseCupArchiveResetActions');
     const resetArchiveBtn = $('resetHouseCupArchiveBtn');
-    if(resetActions) resetActions.style.display = role === 'teacher' && inCastle ? 'block' : 'none';
+    if(resetActions) resetActions.style.display = role === 'teacher' && inCastle && !teacherArchiveView ? 'block' : 'none';
     if(resetArchiveBtn) resetArchiveBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || houseCupArchiveRecords.length === 0;
     const publicNav = $('houseCupArchivePublicNav');
-    if(publicNav) publicNav.style.display = role !== 'teacher' && publicArchiveView ? 'block' : 'none';
+    if(publicNav) publicNav.style.display = (role !== 'teacher' && publicArchiveView) || (role === 'teacher' && teacherArchiveView) ? 'block' : 'none';
     recordBtn.disabled = houseCupArchiveBusy || !houseCupArchiveLoaded || !canRecord || Boolean(existingMatchesCurrent && !cupWasChanged);
     recordBtn.textContent = existing && (!existingMatchesCurrent || cupWasChanged) ? '↻ Aggiorna la Coppa della classe selezionata' : '＋ Registra la Coppa della classe selezionata';
     recordBtn.title = existingMatchesCurrent && !cupWasChanged ? 'La Coppa è già registrata e i punteggi coincidono con quelli attuali.'
@@ -2249,6 +2250,7 @@ input, select, .authbox input {
   function closePublicHouseCupArchive(){
     selectedHouseCupYear = '__all__';
     publicArchiveView = false;
+    teacherArchiveView = false;
     $('houseCupArchivePanel').style.display = 'none';
     $('publicHomeTop').style.display = '';
     $('accessSection').style.display = 'block';
@@ -2258,20 +2260,37 @@ input, select, .authbox input {
   }
 
   async function openHouseCupArchive(){
-    if(role !== 'teacher') return;
+    if(role !== 'teacher' || teacherView !== 'castle') return;
     selectedHouseCupYear = '__all__';
-    $('houseCupArchivePanel').style.display = 'block';
-    $('classCard').style.display = 'none';
-    $('pointsCard').style.display = 'none';
+    teacherArchiveView = true;
+    publicArchiveView = false;
+    // Mostra la stessa vista completa dell'Albo d'oro pubblico, ma senza
+    // uscire dalla sessione docente e senza esporre i comandi di modifica.
+    $('publicHomeTop').style.display = 'none';
+    $('accessSection').style.display = 'none';
     $('classManager').style.display = 'none';
     $('teacherControls').style.display = 'none';
-    $('houseCupArchivePanel').style.display = 'none';
+    $('teacherWorkControls').style.display = 'none';
+    $('classCard').style.display = 'none';
+    $('pointsCard').style.display = 'none';
+    $('gradeImportCard').style.display = 'none';
+    $('houses').style.display = 'none';
+    $('ranking').style.display = 'none';
     $('houseStudentsPanel').style.display = 'none';
+    $('castleStudentSearch').style.display = 'none';
+    $('castleClassScores').style.display = 'none';
+    $('studentProfileView').classList.remove('active');
+    $('houseCupArchivePanel').style.display = 'block';
+    $('houseCupArchivePublicNav').style.display = 'block';
+    $('recordHouseCupBtn').style.display = 'none';
+    document.querySelector('.house-cup-archive-actions').style.display = 'none';
+    $('houseCupArchiveResetActions').style.display = 'none';
     selectedHouse = null;
     $('manageBtn').classList.remove('primary');
     $('pointsBtn').classList.remove('primary');
     closeGradeImportPanel();
     document.querySelectorAll('.house').forEach(card => card.classList.remove('selected'));
+    $('houseCupArchiveStatus').textContent = 'Caricamento Albo d’oro…';
     renderHouseCupArchive();
     try { await loadHouseCupArchive(); }
     catch(error) {
@@ -2281,6 +2300,21 @@ input, select, .authbox input {
         ? 'Per attivare l’Albo d’oro, esegui in Supabase lo script SQL fornito insieme al file index.html, poi riapri questa sezione.'
         : 'Impossibile caricare l’Albo d’oro: verifica la connessione e i permessi Supabase.';
     }
+  }
+
+  function closeTeacherHouseCupArchive(){
+    if(!teacherArchiveView) return;
+    teacherArchiveView = false;
+    selectedHouseCupYear = '__all__';
+    $('houseCupArchivePanel').style.display = 'none';
+    $('publicHomeTop').style.display = '';
+    $('accessSection').style.display = 'none';
+    $('classManager').style.display = 'block';
+    $('teacherControls').style.display = 'flex';
+    $('houses').style.display = '';
+    $('ranking').style.display = 'block';
+    teacherView = 'castle';
+    render();
   }
 
   async function recordHouseCup(options = {}){
@@ -2909,6 +2943,7 @@ if (inCastle) {
   function setRole(r){
     role = r;
     publicArchiveView = false;
+    teacherArchiveView = false;
     $('publicHomeTop').style.display = '';
     $('accessSection').style.display = r === 'teacher' ? 'none' : 'block';
     $('houses').style.display = '';
@@ -3007,6 +3042,11 @@ if (inCastle) {
     const archivePanel = $('houseCupArchivePanel');
     if(!archivePanel || archivePanel.style.display === 'none') return;
     if(publicArchiveView) return;
+    if(teacherArchiveView){
+      if(e.target.closest('#houseCupArchivePanel') || e.target.closest('#houseCupArchiveBtn')) return;
+      closeTeacherHouseCupArchive();
+      return;
+    }
     if(e.target.closest('#houseCupArchivePanel') || e.target.closest('#houseCupArchiveBtn')) return;
     archivePanel.style.display = 'none';
   });
@@ -3931,7 +3971,7 @@ $('promoteClassBtn').onclick = async () => {
     else recordHouseCup();
   };
   $('publicAlboOroButton').onclick = openPublicHouseCupArchive;
-  $('backFromPublicAlboBtn').onclick = closePublicHouseCupArchive;
+  $('backFromPublicAlboBtn').onclick = () => teacherArchiveView ? closeTeacherHouseCupArchive() : closePublicHouseCupArchive();
   $('recordHouseCupBtn').onclick = recordHouseCup;
   $('resetHouseCupArchiveBtn').onclick = resetHouseCupArchive;
   $('houseCupArchiveYearSelect').onchange = event => { selectedHouseCupYear = event.target.value || '__all__'; renderHouseCupArchive(); };
