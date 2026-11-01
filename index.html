@@ -1416,10 +1416,10 @@ input, select, .authbox input {
   'use strict';
   
   const houses = { g: 'Grifondoro', t: 'Tassorosso', r: 'Corvonero', s: 'Serpeverde' };
-  const KEY = 'hogwartsState';
+  const KEY = 'hogwartsState_test';
   // Configurazione del client Supabase: usare esclusivamente la chiave pubblicabile.
-  const SUPABASE_URL = 'https://wfcujsqswmmapddnzmew.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_hZbJF0N-cYDwWLIKI8g79Q_IHGxjC2G';
+  const SUPABASE_URL = 'https://gzdtjfzehhthvmdvbhpe.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uYRroVRtg9BiaHdUjcjtBQ_eCICtNHi';
   // Archivio Sticker usa lo stesso progetto Supabase ufficiale: il client autenticato
   // di Hogwarts legge lo storico e genera URL temporanei per le immagini private.
   const STICKER_ARCHIVE_LINK_READY = true;
@@ -1436,7 +1436,7 @@ input, select, .authbox input {
   let publicScores = null;
   // La homepage non mostra classi locali finché Supabase non ha risposto.
   let publicDataStatus = 'loading'; // 'loading', 'loaded', 'error'
-  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId';
+  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId_test';
   const ALL_ACTIVE_CLASSES = '__all_active_classes__';
   const $ = id => document.getElementById(id);
   let toastTimer = null;
