@@ -1416,12 +1416,13 @@ input, select, .authbox input {
   'use strict';
   
   const houses = { g: 'Grifondoro', t: 'Tassorosso', r: 'Corvonero', s: 'Serpeverde' };
-  const KEY = 'hogwartsState_test';
+  const KEY = 'hogwartsState';
   // Configurazione del client Supabase: usare esclusivamente la chiave pubblicabile.
-  const SUPABASE_URL = 'https://gzdtjfzehhthvmdvbhpe.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uYRroVRtg9BiaHdUjcjtBQ_eCICtNHi';
-  // Attivare dopo aver collegato Archivio Sticker allo stesso progetto Supabase.
-  const STICKER_ARCHIVE_LINK_READY = false;
+  const SUPABASE_URL = 'https://wfcujsqswmmapddnzmew.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_hZbJF0N-cYDwWLIKI8g79Q_IHGxjC2G';
+  // Archivio Sticker usa lo stesso progetto Supabase ufficiale: il client autenticato
+  // di Hogwarts legge lo storico e genera URL temporanei per le immagini private.
+  const STICKER_ARCHIVE_LINK_READY = true;
   // La pagina torna sempre in modalita pubblica al ricaricamento: non conservare la sessione docente nel localStorage del browser condiviso.
   const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false } }) || null;
   let supabaseUser = null;
@@ -1435,7 +1436,7 @@ input, select, .authbox input {
   let publicScores = null;
   // La homepage non mostra classi locali finché Supabase non ha risposto.
   let publicDataStatus = 'loading'; // 'loading', 'loaded', 'error'
-  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId_test';
+  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId';
   const ALL_ACTIVE_CLASSES = '__all_active_classes__';
   const $ = id => document.getElementById(id);
   let toastTimer = null;
@@ -1868,7 +1869,7 @@ input, select, .authbox input {
         r.action==='add' && r.kind==='absent' ? 'Registra assenza' :
         r.action==='update' ? 'Aggiorna voce esistente' : 'Già aggiornato: invariato';
       const cls = r.kind==='invalid' ? 'grade-import-status-error' : (r.action==='add' || r.action==='update') ? 'grade-import-status-ok' : 'grade-import-status-skip';
-      const gradeLabel = r.kind==='grade' ? esc(r.grade) : r.kind==='absent' ? 'Assente' : '—';
+      const gradeLabel = r.kind==='grade' ? esc(formatDisplayNumber(r.grade)) : r.kind==='absent' ? 'Assente' : '—';
       return `<tr><td>${esc(r.name || '—')}</td><td>${esc(r.studentId || '—')}</td><td>${gradeLabel}</td><td>${r.kind==='grade' ? esc(pointLabel(r.points)) : '0'}</td><td>${esc(houses[r.student && r.student.house] || 'Non assegnata')}</td><td class="${cls}">${esc(status)}${r.detail ? ': '+esc(r.detail) : ''}</td></tr>`;
     }).join('');
     html += '</tbody></table>';
@@ -2582,7 +2583,15 @@ if (inCastle) {
     }
   }
 
-  const formatPoints = n => Number((Number(n) || 0).toFixed(2)).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+  // Formattazione esclusivamente visiva: usa il punto decimale senza modificare
+  // i valori memorizzati né le regole di lettura/importazione dei voti.
+  const formatDisplayNumber = (value, maximumFractionDigits = 2) => {
+    if(value == null || value === '') return '—';
+    const numeric = typeof value === 'number' ? value : Number(String(value).trim().replace(',', '.'));
+    if(!Number.isFinite(numeric)) return String(value);
+    return new Intl.NumberFormat('en-US', { useGrouping: false, maximumFractionDigits }).format(numeric);
+  };
+  const formatPoints = n => formatDisplayNumber(Number(n) || 0, 2);
   const pointLabel = n => formatPoints(n) + (Math.abs(Number(n) || 0) === 1 ? ' punto' : ' punti');
 
   function renderCastleStudentSearch(){
@@ -2780,7 +2789,7 @@ if (inCastle) {
       ((s.history || []).slice().reverse().map(h => {
         const reference = String(h.reference || h.testName || '').trim();
         return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid #3f3b32;border-radius:10px">
-          <span style="min-width:0"><span>${esc(h.grade === 'Encomio speciale' ? '✨ Bonus' : h.grade === 'Malus' ? '⚖️ Malus' : 'Voto ' + h.grade)} → ${esc(h.points >= 0 ? '+' : '')}${esc(pointLabel(h.points))}</span>${reference ? `<span style="display:block;margin-top:4px;font-size:12px;opacity:.82">Verifica: ${esc(reference)}</span>` : ''}</span>
+          <span style="min-width:0"><span>${esc(h.grade === 'Encomio speciale' ? '✨ Bonus' : h.grade === 'Malus' ? '⚖️ Malus' : 'Voto ' + formatDisplayNumber(h.grade))} → ${esc(h.points >= 0 ? '+' : '')}${esc(pointLabel(h.points))}</span>${reference ? `<span style="display:block;margin-top:4px;font-size:12px;opacity:.82">Verifica: ${esc(reference)}</span>` : ''}</span>
           <span style="display:flex;align-items:center;gap:5px;flex-shrink:0">
             ${h.grade !== 'Encomio speciale' && h.grade !== 'Malus' && Number.isFinite(Number(h.grade)) ? `<button type="button" class="edit-grade" data-id="${esc(h.id)}" title="Modifica voto" aria-label="Modifica voto" ${activeIsArchived() ? 'disabled' : ''} style="border:0;background:transparent;cursor:pointer;font-size:17px;padding:3px">✏️</button>` : ''}
             <button type="button" class="del" data-id="${esc(h.id)}" title="Rimuovi voce" aria-label="Rimuovi voce" ${activeIsArchived() ? 'disabled' : ''} style="border:0;background:transparent;cursor:pointer;font-size:18px;padding:3px">🗑️</button>
@@ -2825,13 +2834,13 @@ if (inCastle) {
     $('teacherWorkControls').style.display = 'none';
     $('studentProfileView').classList.add('active');
     $('studentProfileName').textContent = student.name;
-    $('studentProfileMeta').textContent = `${cls.name} · ${cls.schoolYear || 'anno non indicato'} · ${student.house ? houses[student.house] : 'Casata non assegnata'} · Media ${(() => { const grades=(student.history||[]).map(h=>Number(String(h.grade).replace(',','.'))).filter(n=>Number.isFinite(n)&&n>=1&&n<=10); return grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toLocaleString('it-IT',{maximumFractionDigits:2}) : '—'; })()}`;
+    $('studentProfileMeta').textContent = `${cls.name} · ${cls.schoolYear || 'anno non indicato'} · ${student.house ? houses[student.house] : 'Casata non assegnata'} · Media ${(() => { const grades=(student.history||[]).map(h=>Number(String(h.grade).replace(',','.'))).filter(n=>Number.isFinite(n)&&n>=1&&n<=10); return grades.length ? formatDisplayNumber(grades.reduce((a,b)=>a+b,0)/grades.length) : '—'; })()}`;
     const totalsNow = totals(state.students);
     $('studentProfileSigil').textContent = houseSigils[student.house] || '🎩';
     $('studentProfileHousePoints').textContent = `${formatPoints(student.house ? totalsNow[student.house] : 0)} pt`;
     const entries = (student.history || []).slice().sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
     $('studentProfileGradesContent').innerHTML = entries.length ? entries.map(h=>{
-      const gradeLabel = h.grade === 'Encomio speciale' ? 'Bonus' : h.grade === 'Malus' ? 'Malus' : `Voto ${esc(h.grade)}`;
+      const gradeLabel = h.grade === 'Encomio speciale' ? 'Bonus' : h.grade === 'Malus' ? 'Malus' : `Voto ${esc(formatDisplayNumber(h.grade))}`;
       const reference = String(h.reference || h.testName || '').trim();
       return `<div class="student-profile-grade"><span><strong>${gradeLabel}</strong>${reference ? `<span style="display:block;color:var(--muted)">${esc(reference)}</span>` : ''}<span style="display:block;color:var(--muted)">${profileDate(h.date)}</span></span><strong>${esc(Number(h.points)>=0?'+':'')}${esc(pointLabel(h.points))}</strong></div>`;
     }).join('') : '<p>Nessun voto registrato.</p>';
@@ -2842,7 +2851,8 @@ if (inCastle) {
   }
   async function loadStudentProfileStickers(student, cls){
     const target = $('studentProfileStickersContent');
-    if(!STICKER_ARCHIVE_LINK_READY){ target.textContent='La sezione Collezione sticker è pronta. Il caricamento sarà attivato quando collegheremo Archivio Sticker a questo progetto Supabase; per ora gli indirizzi dei due progetti restano invariati.'; return; }
+    if(!STICKER_ARCHIVE_LINK_READY){ target.textContent='La sezione Collezione sticker non è attiva.'; return; }
+    if(role !== 'teacher' || !supabaseUser){ target.textContent='Lo storico degli sticker è visibile solo in modalità docente.'; return; }
     if(!supabase){ target.textContent='Connessione Supabase non disponibile.'; return; }
     try{
       const {data:rows,error}=await supabase.from('sticker_assignment_history')
@@ -2850,7 +2860,7 @@ if (inCastle) {
         .eq('student_id',String(student.dbId || student.id)).eq('class_id',String(cls.dbId || cls.id))
         .eq('is_absent',false).not('sticker_id','is',null).order('test_date',{ascending:true}).order('assigned_at',{ascending:true});
       if(error) throw error;
-      if(!rows || !rows.length){target.textContent='Non ci sono ancora sticker registrati per questo studente. La collezione comparirà dopo aver collegato Archivio Sticker a questo progetto Supabase e registrato una prova.';return;}
+      if(!rows || !rows.length){target.textContent='Non ci sono ancora sticker registrati per questo studente.';return;}
       const ids=[...new Set(rows.map(r=>r.sticker_id).filter(Boolean))];
       const {data:meta,error:metaError}=await supabase.from('sticker_archive').select('id,file_path').in('id',ids);
       if(metaError) throw metaError;
@@ -2862,7 +2872,7 @@ if (inCastle) {
       target.innerHTML='<div class="student-sticker-grid">'+rows.map(r=>{
         const path=pathById.get(String(r.sticker_id));const url=path&&urlByPath.get(path);const title=String(r.test_name||'Prova senza nome');
         const points=Number(r.student_points);const total=Number(r.house_total);
-        return `<article class="student-sticker" tabindex="0" role="button" aria-label="Gira lo sticker della prova ${esc(title)}"><div class="student-sticker-inner"><div class="student-sticker-face">${url?`<img src="${esc(url)}" alt="Sticker assegnato per ${esc(title)}">`:'Sticker non disponibile'}</div><div class="student-sticker-face student-sticker-back"><strong>${esc(title)}</strong><span>${profileDate(r.test_date||r.assigned_at)}</span><span>Punti studente: ${Number.isFinite(points)?(points>0?'+':'')+points:'—'}</span><span>Totale casata: ${Number.isFinite(total)?total:'—'} pt</span></div></div></article>`;
+        return `<article class="student-sticker" tabindex="0" role="button" aria-label="Gira lo sticker della prova ${esc(title)}"><div class="student-sticker-inner"><div class="student-sticker-face">${url?`<img src="${esc(url)}" alt="Sticker assegnato per ${esc(title)}">`:'Sticker non disponibile'}</div><div class="student-sticker-face student-sticker-back"><strong>${esc(title)}</strong><span>${profileDate(r.test_date||r.assigned_at)}</span><span>Voto: ${r.grade!=null&&r.grade!==''&&Number.isFinite(Number(String(r.grade).replace(',','.')))?formatDisplayNumber(r.grade):'—'}</span><span>Punti guadagnati: ${Number.isFinite(points)?(points>0?'+':'')+formatPoints(points):'—'}</span><span>Totale casata: ${Number.isFinite(total)?formatPoints(total):'—'} pt</span></div></div></article>`;
       }).join('')+'</div>';
       target.querySelectorAll('.student-sticker').forEach(card=>{const flip=()=>card.classList.toggle('flipped');card.addEventListener('click',flip);card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();flip();}});});
     }catch(error){console.warn('Lettura fascicolo sticker non riuscita:',error);target.textContent='Non riesco ancora a leggere gli sticker. Verifica che il progetto Supabase contenga le tabelle sticker_assignment_history e sticker_archive e il bucket archivio-sticker. Dettaglio: '+(error.message||'errore sconosciuto');}
