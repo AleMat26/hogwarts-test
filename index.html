@@ -1416,10 +1416,10 @@ input, select, .authbox input {
   'use strict';
   
   const houses = { g: 'Grifondoro', t: 'Tassorosso', r: 'Corvonero', s: 'Serpeverde' };
-  const KEY = 'hogwartsState_test';
+  const KEY = 'hogwartsState';
   // Configurazione del client Supabase: usare esclusivamente la chiave pubblicabile.
-  const SUPABASE_URL = 'https://gzdtjfzehhthvmdvbhpe.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uYRroVRtg9BiaHdUjcjtBQ_eCICtNHi';
+  const SUPABASE_URL = 'https://wfcujsqswmmapddnzmew.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_hZbJF0N-cYDwWLIKI8g79Q_IHGxjC2G';
   // Archivio Sticker usa lo stesso progetto Supabase ufficiale: il client autenticato
   // di Hogwarts legge lo storico e genera URL temporanei per le immagini private.
   const STICKER_ARCHIVE_LINK_READY = true;
@@ -1436,7 +1436,7 @@ input, select, .authbox input {
   let publicScores = null;
   // La homepage non mostra classi locali finché Supabase non ha risposto.
   let publicDataStatus = 'loading'; // 'loading', 'loaded', 'error'
-  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId_test';
+  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId';
   const ALL_ACTIVE_CLASSES = '__all_active_classes__';
   const $ = id => document.getElementById(id);
   let toastTimer = null;
@@ -2694,7 +2694,7 @@ if (inCastle) {
       });
       $('houseStudentsTitle').textContent = 'Studenti di ' + houses[selectedHouse] + ' · Castello';
       $('houseStudentsList').innerHTML = members.map(st =>
-        `<div class="house-student-line house-student-clickable" role="button" tabindex="0" data-house-student="${esc(st.id)}" data-house-class="${esc(st.classId)}" aria-label="Apri i punteggi di ${esc(st.name)} nella classe ${esc(st.className)}"><b>${esc(st.name)}</b><span>${esc(st.className)}</span></div>`
+        `<div class="house-student-line house-student-clickable" role="button" tabindex="0" data-house-student="${esc(st.id)}" data-house-class="${esc(st.classId)}" aria-label="Apri il profilo di ${esc(st.name)} nella classe ${esc(st.className)}"><b>${esc(st.name)}</b><span>${esc(st.className)}</span></div>`
       ).join('') || `<div class="house-students-empty">${query ? 'Nessuno studente corrisponde alla ricerca.' : 'Nessuno studente assegnato a questa Casata nelle classi attive.'}</div>`;
     } else {
       const shownClass = activeClass();
@@ -2703,7 +2703,7 @@ if (inCastle) {
         .slice().sort((a,b) => a.name.localeCompare(b.name, 'it'));
       $('houseStudentsTitle').textContent = 'Studenti di ' + houses[selectedHouse] + (shownClass ? ' · ' + shownClass.name : '');
       $('houseStudentsList').innerHTML = members.map(st =>
-        `<div class="house-student-line house-student-clickable" role="button" tabindex="0" data-house-student="${esc(st.id)}" data-house-class="${esc(shownClass ? shownClass.id : '')}" aria-label="Apri i punteggi di ${esc(st.name)}"><b>${esc(st.name)}</b><span>${pointLabel(st.points || 0)}</span></div>`
+        `<div class="house-student-line house-student-clickable" role="button" tabindex="0" data-house-student="${esc(st.id)}" data-house-class="${esc(shownClass ? shownClass.id : '')}" aria-label="Apri il profilo di ${esc(st.name)}"><b>${esc(st.name)}</b><span>${pointLabel(st.points || 0)}</span></div>`
       ).join('') || `<div class="house-students-empty">${query ? 'Nessuno studente corrisponde alla ricerca.' : 'Nessuno studente assegnato a questa Casata.'}</div>`;
     }
     $('houseStudentsPanel').style.display = 'block';
@@ -4211,7 +4211,7 @@ $('promoteClassBtn').onclick = async () => {
     if(teacherView === 'castle' && String(state.activeClassId) !== String(classId)) {
       switchClass(classId);
     }
-    openStudentPoints(studentId);
+    openStudentProfile(studentId);
   });
   $('houseStudentsList').addEventListener('keydown', e => {
     if(e.key !== 'Enter' && e.key !== ' ') return;
@@ -4222,7 +4222,7 @@ $('promoteClassBtn').onclick = async () => {
     const classId = row.dataset.houseClass;
     const studentId = row.dataset.houseStudent;
     if(teacherView === 'castle' && String(state.activeClassId) !== String(classId)) switchClass(classId);
-    openStudentPoints(studentId);
+    openStudentProfile(studentId);
   });
   $('commendBtn').onclick = () => {
     const st = state.students.find(x => String(x.id) === String($('pointsStudent').value));
