@@ -1117,8 +1117,6 @@ input, select, .authbox input {
 .student-profile-house-members { display:none; margin-top:14px; padding:16px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
 .student-profile-house-members.active { display:block; }
 .student-profile-house-members h3 { margin:0 0 12px; color:var(--gold-soft); font:700 17px Georgia,serif; }
-.student-profile-house-members .house-student-line { display:flex; justify-content:space-between; gap:12px; padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.08); font:14px/1.4 system-ui,sans-serif; }
-.student-profile-house-members .house-student-line:last-child { border-bottom:0; }
 .student-profile-houses .student-house-card.leading { box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(216,181,106,.2); }
 .student-profile-houses .student-house-card.leading .points { background:rgba(226,194,122,.14); border-color:var(--gold-soft); color:var(--gold-soft); }
 .student-profile-houses .student-house-card.leading .points::before { content:'🏆 '; }
@@ -1270,18 +1268,17 @@ input, select, .authbox input {
     </div>
     <section class="student-profile-houses" id="studentProfileHouses" aria-label="Le quattro Casate">
       <div class="student-house-grid">
-        <article class="house g student-house-card" data-student-house-card="g" role="button" tabindex="0" aria-label="Visualizza gli studenti di Grifondoro"><div class="sigil">🦁</div><h2>Grifondoro</h2><p>Coraggio, audacia e spirito d'iniziativa.</p><div class="points" data-student-house-points="g">0 punti</div></article>
-        <article class="house t student-house-card" data-student-house-card="t" role="button" tabindex="0" aria-label="Visualizza gli studenti di Tassorosso"><div class="sigil">🦡</div><h2>Tassorosso</h2><p>Lealtà, pazienza e lavoro di squadra.</p><div class="points" data-student-house-points="t">0 punti</div></article>
-        <article class="house r student-house-card" data-student-house-card="r" role="button" tabindex="0" aria-label="Visualizza gli studenti di Corvonero"><div class="sigil">🦅</div><h2>Corvonero</h2><p>Curiosità, ingegno e amore per la conoscenza.</p><div class="points" data-student-house-points="r">0 punti</div></article>
-        <article class="house s student-house-card" data-student-house-card="s" role="button" tabindex="0" aria-label="Visualizza gli studenti di Serpeverde"><div class="sigil">🐍</div><h2>Serpeverde</h2><p>Ambizione, determinazione e astuzia.</p><div class="points" data-student-house-points="s">0 punti</div></article>
+        <article class="house g clickable student-house-card" data-student-house-card="g" role="button" tabindex="0" aria-label="Visualizza gli studenti di Grifondoro"><div class="sigil">🦁</div><h2>Grifondoro</h2><p>Coraggio, audacia e spirito d'iniziativa.</p><div class="points" data-student-house-points="g">0 punti</div></article>
+        <article class="house t clickable student-house-card" data-student-house-card="t" role="button" tabindex="0" aria-label="Visualizza gli studenti di Tassorosso"><div class="sigil">🦡</div><h2>Tassorosso</h2><p>Lealtà, pazienza e lavoro di squadra.</p><div class="points" data-student-house-points="t">0 punti</div></article>
+        <article class="house r clickable student-house-card" data-student-house-card="r" role="button" tabindex="0" aria-label="Visualizza gli studenti di Corvonero"><div class="sigil">🦅</div><h2>Corvonero</h2><p>Curiosità, ingegno e amore per la conoscenza.</p><div class="points" data-student-house-points="r">0 punti</div></article>
+        <article class="house s clickable student-house-card" data-student-house-card="s" role="button" tabindex="0" aria-label="Visualizza gli studenti di Serpeverde"><div class="sigil">🐍</div><h2>Serpeverde</h2><p>Ambizione, determinazione e astuzia.</p><div class="points" data-student-house-points="s">0 punti</div></article>
       </div>
-      <section class="student-profile-house-members" id="studentProfileHouseMembers" aria-live="polite" style="display:none">
-        <h3 id="studentProfileHouseMembersTitle"></h3>
-        <div id="studentProfileHouseMembersList"></div>
+      <section class="card student-profile-house-members" id="studentProfileHouseMembers" aria-live="polite" style="display:none">
+        <h3 id="studentProfileHouseMembersTitle">Studenti della Casata</h3>
+        <input id="studentProfileHouseSearch" class="house-search" type="search" placeholder="Cerca uno studente in questa Casata…" aria-label="Cerca studente nella Casata">
+        <div id="studentProfileHouseMembersList" class="list"></div>
       </section>
-      <section class="student-profile-house-summary" id="studentProfileHouseSummary" aria-live="polite">
-        <div id="studentProfileHouseGroups"></div>
-      </section>
+
     </section>
     <section class="student-password-change" id="studentPasswordChangePanel" aria-live="polite">
       <h3>🔒 Imposta la tua password personale</h3>
@@ -2937,6 +2934,27 @@ if (inCastle) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('it-IT');
   }
+  function buildHouseCompositionMarkup(students, className){
+    const crests = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
+    const houseCards = houseKey => {
+      const members = students.filter(student => student.house === houseKey)
+        .slice().sort((a,b) => a.name.localeCompare(b.name, 'it'));
+      const names = members.map(student => `<span>${esc(student.name)}</span>`).join('');
+      return `<article class="sorting-house ${houseKey}">
+        <div class="sorting-house-head">
+          <span class="sorting-house-crest" aria-hidden="true">${crests[houseKey]}</span>
+          <h3>${houses[houseKey]}</h3>
+          <span class="sorting-house-count">${members.length} ${members.length === 1 ? 'studente' : 'studenti'}</span>
+        </div>
+        <div class="sorting-student-list">${names || '<span>Nessuno studente</span>'}</div>
+      </article>`;
+    };
+    return `<div class="sorting-ceremony review-houses">
+      <p class="ceremony-title">La composizione attuale della classe ${esc(className || '')}</p>
+      <div class="sorting-houses">${Object.keys(houses).map(houseCards).join('')}</div>
+    </div>`;
+  }
+
   function renderStudentProfileHouses(cls){
     const roster = studentHouseRosterReady ? studentHouseRoster : [];
     const totalsByHouse = {g:0,t:0,r:0,s:0};
@@ -2948,61 +2966,44 @@ if (inCastle) {
       const card=document.querySelector(`[data-student-house-card="${key}"]`);
       if(card) card.classList.toggle('leading', highest > 0 && value === highest);
     });
-    if(!studentHouseRosterReady){
-      $('studentProfileHouseGroups').innerHTML=`<div class="house-students-empty">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</div>`;
-      return;
-    }
-    const crests = {g:'🦁',t:'🦡',r:'🦅',s:'🐍'};
-    // Il pulsante "Le quattro Casate" riproduce la stessa composizione grafica
-    // mostrata dalla funzione docente reviewHousesBtn.
-    $('studentProfileHouseGroups').innerHTML = `
-      <div class="sorting-ceremony review-houses">
-        <p class="ceremony-title">La composizione attuale della classe ${esc(cls?.name || '')}</p>
-        <div class="sorting-houses">${Object.keys(houses).map(key=>{
-          const members=roster.filter(st=>st.house===key).sort((a,b)=>a.name.localeCompare(b.name,'it'));
-          return `<article class="sorting-house ${key}">
-            <div class="sorting-house-head">
-              <span class="sorting-house-crest" aria-hidden="true">${crests[key]}</span>
-              <h3>${houses[key]}</h3>
-              <span class="sorting-house-count">${members.length} ${members.length===1?'studente':'studenti'}</span>
-            </div>
-            <div class="sorting-student-list">${members.map(st=>`<span>${esc(st.name)}</span>`).join('') || '<span>Nessuno studente</span>'}</div>
-          </article>`;
-        }).join('')}</div>
-      </div>`;
   }
 
-  function showStudentProfileHouseMembers(houseKey){
+  function showStudentProfileHouseMembers(houseKey, preserveSearch=false){
     const panel=$('studentProfileHouseMembers');
+    if(!preserveSearch) $('studentProfileHouseSearch').value='';
+    const query=($('studentProfileHouseSearch').value || '').trim().toLocaleLowerCase('it');
     const members=studentHouseRosterReady
-      ? studentHouseRoster.filter(st=>st.house===houseKey).sort((a,b)=>a.name.localeCompare(b.name,'it'))
+      ? studentHouseRoster.filter(st=>st.house===houseKey && st.name.toLocaleLowerCase('it').includes(query)).slice().sort((a,b)=>a.name.localeCompare(b.name,'it'))
       : [];
     const label=houses[houseKey] || 'Casata';
-    $('studentProfileHouseMembersTitle').textContent = `${houseSigils[houseKey]} ${label} · ${members.length} ${members.length===1?'studente':'studenti'}`;
+    $('studentProfileHouseMembersTitle').textContent = 'Studenti di ' + label + ' · ' + (activeClass()?.name || 'Classe');
     $('studentProfileHouseMembersList').innerHTML = !studentHouseRosterReady
       ? `<div class="house-students-empty">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</div>`
       : members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b><span>${pointLabel(st.points||0)}</span></div>`).join('')
-        || '<div class="house-students-empty">Nessuno studente assegnato a questa Casata.</div>';
-    panel.classList.add('active');
-    $('studentProfileHouseSummary').classList.remove('active');
+        || `<div class="house-students-empty">${query ? 'Nessuno studente corrisponde alla ricerca.' : 'Nessuno studente assegnato a questa Casata.'}</div>`;
+    panel.style.display='block';
     document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.toggle('selected',card.dataset.studentHouseCard===houseKey));
   }
 
-  function toggleStudentProfileHouseSummary(){
-    const panel=$('studentProfileHouseSummary');
-    const opening=!panel.classList.contains('active');
-    panel.classList.toggle('active',opening);
-    $('studentProfileHouseMembers').classList.remove('active');
-    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
-    $('studentProfileHousesBtn').classList.toggle('primary',opening);
-    if(opening) renderStudentProfileHouses(activeClass());
+  function openStudentProfileHouseSummary(){
+    $('modalTitle').textContent = 'Le quattro Casate';
+    $('result').innerHTML = studentHouseRosterReady
+      ? buildHouseCompositionMarkup(studentHouseRoster, activeClass()?.name || '')
+      : `<div class="sorting-ceremony"><p class="ceremony-intro">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</p></div>`;
+    $('enterHogwarts').textContent = 'Chiudi';
+    openCeremonyModalAfterScroll();
   }
+
   document.querySelectorAll('[data-student-house-card]').forEach(card=>{
     const choose=()=>showStudentProfileHouseMembers(card.dataset.studentHouseCard);
     card.addEventListener('click',choose);
     card.addEventListener('keydown',event=>{ if(event.key==='Enter'||event.key===' '){event.preventDefault();choose();} });
   });
-  $('studentProfileHousesBtn').addEventListener('click',toggleStudentProfileHouseSummary);
+  $('studentProfileHouseSearch').addEventListener('input',()=>{
+    const selected=document.querySelector('[data-student-house-card].selected');
+    if(selected) showStudentProfileHouseMembers(selected.dataset.studentHouseCard, true);
+  });
+  $('studentProfileHousesBtn').addEventListener('click',openStudentProfileHouseSummary);
 
   async function openStudentProfile(studentId, returnToPoints = false){
     const student = state.students.find(st => String(st.id) === String(studentId));
@@ -3028,9 +3029,8 @@ if (inCastle) {
     const totalsNow = totals(state.students);
     $('studentProfileSigil').textContent = houseSigils[student.house] || '🎩';
     $('studentProfileHousePoints').textContent = `${formatPoints(student.house ? totalsNow[student.house] : 0)} pt`;
-    $('studentProfileHouseSummary').classList.remove('active');
-    $('studentProfileHouseMembers').classList.remove('active');
-    $('studentProfileHousesBtn').classList.remove('primary');
+    $('studentProfileHouseMembers').style.display='none';
+    $('studentProfileHouseSearch').value='';
     document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
     renderStudentProfileHouses(cls);
     const entries = (student.history || []).slice().sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
@@ -4687,31 +4687,8 @@ $('reviewHousesBtn').onclick = () => {
     $('houseCupArchivePanel').style.display = 'none';
     // Consenti la consultazione anche in archivio: la modale è di sola lettura.
     if(role !== 'teacher' || (teacherView !== 'class' && !activeIsArchived())) return;
-
-    const crests = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
-
-    const houseCards = houseKey => {
-      const members = state.students.filter(student => student.house === houseKey);
-      const names = members.map(student => `<span>${esc(student.name)}</span>`).join('');
-
-      return `<article class="sorting-house ${houseKey}">
-        <div class="sorting-house-head">
-          <span class="sorting-house-crest" aria-hidden="true">${crests[houseKey]}</span>
-          <h3>${houses[houseKey]}</h3>
-          <span class="sorting-house-count">${members.length} ${members.length === 1 ? 'studente' : 'studenti'}</span>
-        </div>
-        <div class="sorting-student-list">${names || '<span>Nessuno studente</span>'}</div>
-      </article>`;
-    };
-
     $('modalTitle').textContent = 'Le quattro Casate';
-
-    $('result').innerHTML = `
-      <div class="sorting-ceremony review-houses">
-        <p class="ceremony-title">La composizione attuale della classe ${esc(state.className)}</p>
-        <div class="sorting-houses">${Object.keys(houses).map(houseCards).join('')}</div>
-      </div>`;
-
+    $('result').innerHTML = buildHouseCompositionMarkup(state.students, state.className);
     $('enterHogwarts').textContent = 'Chiudi';
     openCeremonyModalAfterScroll();
 };
