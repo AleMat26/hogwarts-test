@@ -1114,6 +1114,14 @@ input, select, .authbox input {
 .student-profile-houses .student-house-card:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
 .student-profile-houses .student-house-card.selected { box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(216,181,106,.2); }
 .student-profile-house-summary { display:none; margin-top:16px; padding:18px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
+.student-profile-house-members { display:none; margin-top:14px; padding:16px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
+.student-profile-house-members.active { display:block; }
+.student-profile-house-members h3 { margin:0 0 12px; color:var(--gold-soft); font:700 17px Georgia,serif; }
+.student-profile-house-members .house-student-line { display:flex; justify-content:space-between; gap:12px; padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.08); font:14px/1.4 system-ui,sans-serif; }
+.student-profile-house-members .house-student-line:last-child { border-bottom:0; }
+.student-profile-houses .student-house-card.leading { box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(216,181,106,.2); }
+.student-profile-houses .student-house-card.leading .points { background:rgba(226,194,122,.14); border-color:var(--gold-soft); color:var(--gold-soft); }
+.student-profile-houses .student-house-card.leading .points::before { content:'🏆 '; }
 .student-profile-house-summary.active { display:block; }
 .student-profile-house-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
 .student-profile-house-group { padding:12px; border:1px solid #ffffff20; border-radius:10px; min-width:0; }
@@ -1267,9 +1275,12 @@ input, select, .authbox input {
         <article class="house r student-house-card" data-student-house-card="r" role="button" tabindex="0" aria-label="Visualizza gli studenti di Corvonero"><div class="sigil">🦅</div><h2>Corvonero</h2><p>Curiosità, ingegno e amore per la conoscenza.</p><div class="points" data-student-house-points="r">0 punti</div></article>
         <article class="house s student-house-card" data-student-house-card="s" role="button" tabindex="0" aria-label="Visualizza gli studenti di Serpeverde"><div class="sigil">🐍</div><h2>Serpeverde</h2><p>Ambizione, determinazione e astuzia.</p><div class="points" data-student-house-points="s">0 punti</div></article>
       </div>
+      <section class="student-profile-house-members" id="studentProfileHouseMembers" aria-live="polite" style="display:none">
+        <h3 id="studentProfileHouseMembersTitle"></h3>
+        <div id="studentProfileHouseMembersList"></div>
+      </section>
       <section class="student-profile-house-summary" id="studentProfileHouseSummary" aria-live="polite">
-        <h3>Studenti suddivisi per Casata · <span id="studentProfileHouseClassName"></span></h3>
-        <div class="student-profile-house-groups" id="studentProfileHouseGroups"></div>
+        <div id="studentProfileHouseGroups"></div>
       </section>
     </section>
     <section class="student-password-change" id="studentPasswordChangePanel" aria-live="polite">
@@ -1285,6 +1296,7 @@ input, select, .authbox input {
       <div class="student-account-status" id="studentPasswordMessage"></div>
     </section>
     <div class="student-profile-actions">
+      <button type="button" class="btn" id="studentProfileHousesBtn">🏰 Le quattro Casate</button>
       <button type="button" class="btn primary" id="studentProfileGradesBtn">📚 Storico voti</button>
       <button type="button" class="btn" id="studentProfileStickersBtn">✨ Collezione sticker</button>
     </div>
@@ -2929,32 +2941,68 @@ if (inCastle) {
     const roster = studentHouseRosterReady ? studentHouseRoster : [];
     const totalsByHouse = {g:0,t:0,r:0,s:0};
     roster.forEach(st=>{ if(st.house && Object.prototype.hasOwnProperty.call(totalsByHouse,st.house)) totalsByHouse[st.house] += Number(st.points)||0; });
+    const highest = Math.max(...Object.values(totalsByHouse));
     Object.entries(totalsByHouse).forEach(([key,value])=>{
       const el=document.querySelector(`[data-student-house-points="${key}"]`);
       if(el) el.textContent=pointLabel(value);
+      const card=document.querySelector(`[data-student-house-card="${key}"]`);
+      if(card) card.classList.toggle('leading', highest > 0 && value === highest);
     });
-    $('studentProfileHouseClassName').textContent=cls?.name || '';
     if(!studentHouseRosterReady){
       $('studentProfileHouseGroups').innerHTML=`<div class="house-students-empty">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</div>`;
       return;
     }
-    $('studentProfileHouseGroups').innerHTML=Object.entries(houses).map(([key,label])=>{
-      const members=roster.filter(st=>st.house===key).sort((a,b)=>a.name.localeCompare(b.name,'it'));
-      return `<section class="student-profile-house-group"><h4>${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label} · ${members.length}</h4>${members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b><span>${pointLabel(st.points||0)}</span></div>`).join('') || '<div class="house-students-empty">Nessuno studente assegnato.</div>'}</section>`;
-    }).join('');
+    const crests = {g:'🦁',t:'🦡',r:'🦅',s:'🐍'};
+    // Il pulsante "Le quattro Casate" riproduce la stessa composizione grafica
+    // mostrata dalla funzione docente reviewHousesBtn.
+    $('studentProfileHouseGroups').innerHTML = `
+      <div class="sorting-ceremony review-houses">
+        <p class="ceremony-title">La composizione attuale della classe ${esc(cls?.name || '')}</p>
+        <div class="sorting-houses">${Object.keys(houses).map(key=>{
+          const members=roster.filter(st=>st.house===key).sort((a,b)=>a.name.localeCompare(b.name,'it'));
+          return `<article class="sorting-house ${key}">
+            <div class="sorting-house-head">
+              <span class="sorting-house-crest" aria-hidden="true">${crests[key]}</span>
+              <h3>${houses[key]}</h3>
+              <span class="sorting-house-count">${members.length} ${members.length===1?'studente':'studenti'}</span>
+            </div>
+            <div class="sorting-student-list">${members.map(st=>`<span>${esc(st.name)}</span>`).join('') || '<span>Nessuno studente</span>'}</div>
+          </article>`;
+        }).join('')}</div>
+      </div>`;
   }
 
-  function toggleStudentProfileHouses(){
+  function showStudentProfileHouseMembers(houseKey){
+    const panel=$('studentProfileHouseMembers');
+    const members=studentHouseRosterReady
+      ? studentHouseRoster.filter(st=>st.house===houseKey).sort((a,b)=>a.name.localeCompare(b.name,'it'))
+      : [];
+    const label=houses[houseKey] || 'Casata';
+    $('studentProfileHouseMembersTitle').textContent = `${houseSigils[houseKey]} ${label} · ${members.length} ${members.length===1?'studente':'studenti'}`;
+    $('studentProfileHouseMembersList').innerHTML = !studentHouseRosterReady
+      ? `<div class="house-students-empty">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</div>`
+      : members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b><span>${pointLabel(st.points||0)}</span></div>`).join('')
+        || '<div class="house-students-empty">Nessuno studente assegnato a questa Casata.</div>';
+    panel.classList.add('active');
+    $('studentProfileHouseSummary').classList.remove('active');
+    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.toggle('selected',card.dataset.studentHouseCard===houseKey));
+  }
+
+  function toggleStudentProfileHouseSummary(){
     const panel=$('studentProfileHouseSummary');
     const opening=!panel.classList.contains('active');
     panel.classList.toggle('active',opening);
-    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.toggle('selected',opening));
+    $('studentProfileHouseMembers').classList.remove('active');
+    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
+    $('studentProfileHousesBtn').classList.toggle('primary',opening);
     if(opening) renderStudentProfileHouses(activeClass());
   }
   document.querySelectorAll('[data-student-house-card]').forEach(card=>{
-    card.addEventListener('click',toggleStudentProfileHouses);
-    card.addEventListener('keydown',event=>{ if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleStudentProfileHouses();} });
+    const choose=()=>showStudentProfileHouseMembers(card.dataset.studentHouseCard);
+    card.addEventListener('click',choose);
+    card.addEventListener('keydown',event=>{ if(event.key==='Enter'||event.key===' '){event.preventDefault();choose();} });
   });
+  $('studentProfileHousesBtn').addEventListener('click',toggleStudentProfileHouseSummary);
 
   async function openStudentProfile(studentId, returnToPoints = false){
     const student = state.students.find(st => String(st.id) === String(studentId));
@@ -2981,6 +3029,8 @@ if (inCastle) {
     $('studentProfileSigil').textContent = houseSigils[student.house] || '🎩';
     $('studentProfileHousePoints').textContent = `${formatPoints(student.house ? totalsNow[student.house] : 0)} pt`;
     $('studentProfileHouseSummary').classList.remove('active');
+    $('studentProfileHouseMembers').classList.remove('active');
+    $('studentProfileHousesBtn').classList.remove('primary');
     document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
     renderStudentProfileHouses(cls);
     const entries = (student.history || []).slice().sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
