@@ -1117,7 +1117,7 @@ input, select, .authbox input {
 .student-account-card { display:none; margin:18px 0; }
 .student-account-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:end; }
 .student-account-form label { display:grid; gap:6px; color:var(--muted); font:13px system-ui,sans-serif; }
-.student-account-status { margin-top:12px; color:var(--muted); font:13px/1.5 system-ui,sans-serif; }
+.student-account-status { margin-top:12px; padding:10px 12px; border-radius:9px; background:rgba(255,255,255,.055); color:var(--paper); font:13px/1.5 system-ui,sans-serif; overflow-wrap:anywhere; }
 .student-account-result { margin-top:12px; padding:12px; border:1px solid rgba(216,181,106,.35); border-radius:10px; background:rgba(216,181,106,.07); font:14px/1.6 system-ui,sans-serif; overflow-wrap:anywhere; }
 .student-password-change { display:none; margin:16px 0; padding:18px; border:1px solid var(--gold); border-radius:14px; background:rgba(216,181,106,.07); }
 .student-password-change.active { display:block; }
@@ -1172,14 +1172,17 @@ input, select, .authbox input {
     </div>
   <!-- ACCESSO -->
   <section class="card" id="accessSection" style="margin-top:0">
-    <div class="controls" style="margin:0">
+    <div class="controls" id="accessChoice" style="margin:0;justify-content:center">
       <button type="button" class="btn primary" id="teacherMode">🧙🏻‍♂️ Accesso docente</button>
+      <button type="button" class="btn primary" id="studentMode">🎓 Accesso studente</button>
     </div>
-    <div id="authBox" class="authbox">
-      <input id="email" type="text" placeholder="Nome utente studente o email docente" autocomplete="username">
-      <input id="password" type="password" placeholder="Password">
+    <div id="authBox" class="authbox" style="display:none">
+      <div id="authHeading" style="grid-column:1/-1;color:var(--gold);font:700 18px Georgia,serif;text-align:center"></div>
+      <input id="email" type="text" placeholder="Email docente" autocomplete="username">
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password">
       <button type="button" class="btn primary" id="loginBtn">Accedi</button>
-      <div id="authMessage" class="message"></div>
+      <button type="button" class="btn" id="authBackBtn">← Indietro</button>
+      <div id="authMessage" class="message" style="grid-column:1/-1"></div>
     </div>
   </section>
 
@@ -1495,6 +1498,7 @@ input, select, .authbox input {
   let state;
   let failedLogins = 0;
   let loginBusy = false;
+  let loginMode = null; // 'teacher' oppure 'student': i due accessi restano separati
   let studentAccountMode = false;
   let studentAccountRecord = null;
   let studentAccountBusy = false;
@@ -3035,8 +3039,12 @@ if (inCastle) {
     $('teacherControls').style.display = isTeacher ? 'flex' : 'none';
     $('teacherWorkControls').style.display = isTeacher ? 'flex' : 'none';
     $('teacherMode').style.display = isTeacher ? 'none' : 'inline-block';
+    $('studentMode').style.display = isTeacher ? 'none' : 'inline-block';
+    $('accessChoice').style.display = 'flex';
     $('teacherMode').disabled = false;
+    $('studentMode').disabled = false;
     $('accessSection').style.display = isTeacher ? 'none' : 'block';
+    loginMode = null;
     $('classManager').style.display = isTeacher ? 'block' : 'none';
     $('publicClassPicker').style.display = isTeacher ? 'none' : 'block';
     $('classCard').style.display = 'none';
@@ -3073,31 +3081,31 @@ if (inCastle) {
     if([...select.options].some(option=>option.value===previous)) select.value=previous;
     updateStudentAccountInfo();
   }
-  async function updateStudentAccountInfo(){
+  async function updateStudentAccountInfo(preserveStatus=false){
     const student = selectedAccountStudent();
     $('studentAccountUsername').disabled = false;
     $('createStudentAccountBtn').disabled = !student;
     $('resetStudentPasswordBtn').disabled = true;
-    if(!student){ $('studentAccountStatus').textContent = 'Seleziona uno studente.'; return; }
-    if(!student.dbId){ $('studentAccountStatus').textContent = 'Questo studente non ha ancora un ID database. Sincronizza prima la classe.'; $('createStudentAccountBtn').disabled = true; return; }
-    $('studentAccountStatus').textContent = 'Verifica account in corso…';
+    if(!student){ if(!preserveStatus) $('studentAccountStatus').textContent = 'Seleziona uno studente.'; return; }
+    if(!student.dbId){ if(!preserveStatus) $('studentAccountStatus').textContent = 'Questo studente non ha ancora un ID database. Sincronizza prima la classe.'; $('createStudentAccountBtn').disabled = true; return; }
+    if(!preserveStatus) $('studentAccountStatus').textContent = 'Verifica account in corso…';
     try{
       const {data,error}=await supabase.from('student_accounts').select('student_id,username,must_change_password').eq('student_id',student.dbId).maybeSingle();
       if(error) throw error;
       if(data){
-        $('studentAccountStatus').textContent = `Account già creato · Nome utente: ${data.username} · ${data.must_change_password ? 'Password temporanea da cambiare al prossimo accesso' : 'Password personale già impostata'}.`;
+        if(!preserveStatus) $('studentAccountStatus').textContent = `Account già creato · Nome utente: ${data.username} · ${data.must_change_password ? 'Password temporanea da cambiare al prossimo accesso' : 'Password personale già impostata'}.`;
         $('studentAccountUsername').value = data.username;
         $('studentAccountUsername').disabled = true;
         $('createStudentAccountBtn').disabled = true;
         $('resetStudentPasswordBtn').disabled = false;
       }else{
-        $('studentAccountStatus').textContent = 'Nessun account associato. Scegli un nome utente e crea l’account.';
+        if(!preserveStatus) $('studentAccountStatus').textContent = 'Nessun account associato. Scegli un nome utente e crea l’account.';
         $('studentAccountUsername').value = '';
         $('createStudentAccountBtn').disabled = false;
       }
     }catch(error){
       console.error('Verifica account studente non riuscita:',error);
-      $('studentAccountStatus').textContent = 'Non riesco a verificare l’account: '+(error.message||'errore sconosciuto');
+      if(!preserveStatus) $('studentAccountStatus').textContent = 'Non riesco a verificare l’account: '+(error.message||'errore sconosciuto');
       $('createStudentAccountBtn').disabled = true;
     }
   }
@@ -3120,24 +3128,40 @@ if (inCastle) {
         ? {action:'create',student_id:student.dbId,username}
         : {action:'reset_password',student_id:student.dbId};
       const {data,error}=await supabase.functions.invoke('manage-student-account',{body});
-      if(error) throw error;
-      if(!data || !data.temporary_password) throw new Error(data?.message || 'La funzione non ha restituito la password temporanea.');
-      $('studentAccountStatus').textContent = data.message || 'Operazione completata.';
+      if(error) {
+        let serverDetail = '';
+        try {
+          const context = error.context;
+          if(context && typeof context.json === 'function') {
+            const payload = await context.json();
+            serverDetail = payload?.message || payload?.error || '';
+          } else if(context?.body) {
+            serverDetail = typeof context.body === 'string' ? context.body : (context.body.message || context.body.error || '');
+          }
+        } catch(_) {}
+        throw new Error(serverDetail || error.message || 'Errore durante la chiamata alla funzione Supabase.');
+      }
+      if(!data || typeof data !== 'object') throw new Error('La funzione Supabase ha risposto senza dati utilizzabili.');
+      if(!data.temporary_password) {
+        const returnedFields = Object.keys(data).join(', ') || 'nessun campo';
+        throw new Error((data.message || 'La funzione non ha restituito la password temporanea.') + ' Campi ricevuti: ' + returnedFields + '.');
+      }
       const shownUsername = data.username || username;
-      $('studentAccountResult').innerHTML = `<div class="student-account-result"><strong>Credenziali temporanee per ${esc(student.name)}</strong><br>Nome utente: <strong>${esc(shownUsername)}</strong><br>Password temporanea: <strong>${esc(data.temporary_password)}</strong><br><small>Comunica queste credenziali direttamente allo studente. Al primo accesso dovrà scegliere una nuova password.</small><br><button type="button" class="btn small" id="copyStudentCredentialsBtn" style="margin-top:10px">Copia credenziali</button></div>`;
+      $('studentAccountStatus').textContent = action==='create' ? 'Account creato. Conserva subito queste credenziali: la password temporanea non sarà più recuperabile.' : 'Password temporanea reimpostata. Comunica subito le nuove credenziali allo studente.';
+      $('studentAccountResult').innerHTML = `<div class="student-account-result" role="status"><strong>Credenziali temporanee per ${esc(student.name)}</strong><br>Nome utente: <strong>${esc(shownUsername)}</strong><br>Password temporanea: <strong style="font-size:1.12em;letter-spacing:.04em;user-select:all">${esc(data.temporary_password)}</strong><br><small>Comunica queste credenziali direttamente allo studente. Al primo accesso dovrà scegliere una nuova password. La password viene mostrata soltanto ora.</small><br><button type="button" class="btn small" id="copyStudentCredentialsBtn" style="margin-top:10px">Copia credenziali</button></div>`;
       $('copyStudentCredentialsBtn').addEventListener('click',()=>{
         const text = `Nome utente: ${shownUsername}\nPassword temporanea: ${data.temporary_password}`;
         if(navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(()=>showToast('Credenziali copiate.')).catch(()=>showToast('Copia non disponibile: seleziona le credenziali manualmente.'));
         else showToast('Copia non disponibile: seleziona le credenziali manualmente.');
       });
-      await updateStudentAccountInfo();
     }catch(error){
       console.error('Gestione account studente non riuscita:',error);
-      const detail = error?.context?.body?.message || error.message || 'errore sconosciuto';
+      const detail = error.message || 'errore sconosciuto';
       $('studentAccountStatus').textContent = 'Operazione non riuscita: '+detail;
+      $('studentAccountResult').innerHTML = `<div class="student-account-result" role="alert"><strong>Non è stato possibile completare l’operazione.</strong><br>${esc(detail)}<br><small>La verifica dello stato dell’account non cancellerà più questo messaggio.</small></div>`;
     }finally{
       studentAccountBusy = false;
-      await updateStudentAccountInfo();
+      await updateStudentAccountInfo(true);
     }
   }
   $('studentAccountsBtn').addEventListener('click',()=>{
@@ -3305,12 +3329,29 @@ if (inCastle) {
     showToast(chosen ? 'Stai visualizzando ' + chosen.name + ' · ' + chosen.schoolYear + '.' : 'Stai visitando il Castello: punti di tutte le classi attive.');
   };
 
-  $('teacherMode').onclick = () => {
-    if(role !== 'teacher' && $('authBox').style.display !== 'grid'){
-      $('authBox').style.display = 'grid';
-      $('teacherMode').disabled = true;
-      $('email').focus();
-    }
+  function openLogin(mode){
+    if(role === 'teacher' || loginBusy) return;
+    loginMode = mode;
+    $('accessChoice').style.display = 'none';
+    $('authBox').style.display = 'grid';
+    $('authHeading').textContent = mode === 'teacher' ? 'Accesso docente' : 'Accesso studente';
+    $('email').value = '';
+    $('password').value = '';
+    $('authMessage').textContent = '';
+    $('email').placeholder = mode === 'teacher' ? 'Email docente' : 'Nome utente studente';
+    $('email').setAttribute('aria-label', mode === 'teacher' ? 'Email docente' : 'Nome utente studente');
+    $('email').focus();
+  }
+  $('teacherMode').onclick = () => openLogin('teacher');
+  $('studentMode').onclick = () => openLogin('student');
+  $('authBackBtn').onclick = () => {
+    if(loginBusy) return;
+    loginMode = null;
+    $('authBox').style.display = 'none';
+    $('accessChoice').style.display = 'flex';
+    $('email').value = '';
+    $('password').value = '';
+    $('authMessage').textContent = '';
   };
 
   function usernameToSyntheticEmail(value){
@@ -3377,11 +3418,20 @@ if (inCastle) {
   }
   $('loginBtn').onclick = async () => {
     if(loginBusy) return;
+    if(!loginMode){ $('authMessage').textContent = 'Scegli prima Accesso docente oppure Accesso studente.'; return; }
     let loginIdentity;
-    try { loginIdentity = usernameToSyntheticEmail($('email').value); }
-    catch(validationError){ $('authMessage').textContent = validationError.message; return; }
+    try {
+      const enteredIdentity = $('email').value.trim();
+      if(loginMode === 'teacher'){
+        if(!enteredIdentity || !enteredIdentity.includes('@')) throw new Error('Inserisci l’indirizzo email del docente.');
+        loginIdentity = enteredIdentity;
+      } else {
+        if(!enteredIdentity || enteredIdentity.includes('@')) throw new Error('Inserisci il nome utente dello studente, non un indirizzo email.');
+        loginIdentity = usernameToSyntheticEmail(enteredIdentity);
+      }
+    } catch(validationError){ $('authMessage').textContent = validationError.message; return; }
     const password = $('password').value;
-    if(!loginIdentity || !password){ $('authMessage').textContent = 'Inserisci nome utente (o email docente) e password.'; return; }
+    if(!loginIdentity || !password){ $('authMessage').textContent = loginMode === 'teacher' ? 'Inserisci email e password del docente.' : 'Inserisci nome utente e password dello studente.'; return; }
     if(!supabase){ $('authMessage').textContent = 'Connessione a Supabase non disponibile. Controlla la connessione Internet.'; return; }
     loginBusy = true; $('loginBtn').disabled = true; $('authMessage').textContent = 'Accesso in corso…';
     try {
@@ -3398,9 +3448,11 @@ if (inCastle) {
       $('password').value = '';
       $('authBox').style.display = 'none';
       if(account){
+        if(loginMode !== 'student') throw new Error('Questo account è uno studente: utilizza il pulsante Accesso studente.');
         await loadStudentAccountProfile(account);
         showToast('Accesso studente effettuato.');
       } else {
+        if(loginMode !== 'teacher') throw new Error('Questo account è un docente: utilizza il pulsante Accesso docente.');
         await loadTeacherData();
         setRole('teacher');
         showToast('Accesso docente effettuato. Dati caricati da Supabase.');
@@ -3420,7 +3472,10 @@ if (inCastle) {
       if(failedLogins >= 3 && !$('authMessage').textContent.startsWith('Importazione iniziale')){ $('authMessage').textContent += ' Se il problema persiste, chiedi al docente di verificare l’account.'; failedLogins = 0; }
     } finally {
       loginBusy = false; $('loginBtn').disabled = false;
-      if(role !== 'teacher' && !studentAccountMode) $('teacherMode').disabled = false;
+      if(role !== 'teacher' && !studentAccountMode){
+        $('teacherMode').disabled = false;
+        $('studentMode').disabled = false;
+      }
     }
   };
 
