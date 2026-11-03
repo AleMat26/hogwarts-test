@@ -1278,18 +1278,13 @@ input, select, .authbox input {
       <button type="button" class="btn primary" id="saveStudentPasswordBtn">Salva nuova password</button>
       <div class="student-account-status" id="studentPasswordMessage"></div>
     </section>
-    <section class="student-profile-houses-section" aria-label="Le quattro Casate della classe">
-      <h3>🏰 Le Casate della classe</h3>
-      <div class="student-profile-houses" id="studentProfileHouses"></div>
-      <div class="student-profile-house-members" id="studentProfileHouseMembers" aria-live="polite" style="display:none"></div>
-    </section>
     <section class="student-profile-navigation" aria-label="Sezioni del profilo">
       <div class="student-profile-actions">
-        <button type="button" class="btn primary" id="studentProfileHousesBtn">🏰 Le quattro Casate</button>
+        <button type="button" class="btn" id="studentProfileHousesBtn">🏰 Le quattro Casate</button>
         <button type="button" class="btn" id="studentProfileGradesBtn">📚 Storico voti</button>
         <button type="button" class="btn" id="studentProfileStickersBtn">✨ Storico sticker</button>
       </div>
-      <div class="student-profile-panel active" id="studentProfileHousesPanel"><div id="studentProfileHousesContent"></div></div>
+      <div class="student-profile-panel" id="studentProfileHousesPanel"><div id="studentProfileHousesContent"></div></div>
       <div class="student-profile-panel" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
       <div class="student-profile-panel" id="studentProfileStickers"><div id="studentProfileStickersContent">Caricamento della collezione…</div></div>
     </section>
@@ -2914,7 +2909,7 @@ if (inCastle) {
   let profileReturnToPoints = false;
   const houseSigils = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
   function showStudentProfilePanel(which){
-    const selected = ['houses','grades','stickers'].includes(which) ? which : 'houses';
+    const selected = ['houses','grades','stickers'].includes(which) ? which : null;
     $('studentProfileHousesPanel').classList.toggle('active', selected === 'houses');
     $('studentProfileGrades').classList.toggle('active', selected === 'grades');
     $('studentProfileStickers').classList.toggle('active', selected === 'stickers');
@@ -2926,15 +2921,14 @@ if (inCastle) {
     const keys = ['g','t','r','s'];
     const members = cls && Array.isArray(cls.students) ? cls.students : [];
     const totalsByHouse = totals(members);
-    const counts = Object.fromEntries(keys.map(key => [key, members.filter(st => st.house === key).length]));
     const labels = {g:'Grifondoro',t:'Tassorosso',r:'Corvonero',s:'Serpeverde'};
-    $('studentProfileHouses').innerHTML = keys.map(key => `<button type="button" class="student-profile-house-card ${key}" data-profile-house="${key}" aria-expanded="false"><span class="crest">${houseSigils[key]}</span><strong>${labels[key]}</strong><span class="house-card-points">${pointLabel(totalsByHouse[key])}</span><small>${counts[key]} ${counts[key] === 1 ? 'studente' : 'studenti'}</small></button>`).join('');
-    $('studentProfileHousesContent').innerHTML = (cls && cls.rosterLoadError ? `<p class="muted">Non riesco a leggere l'elenco completo della classe. È necessario autorizzare in Supabase la lettura dei compagni della stessa classe. Dettaglio: ${esc(cls.rosterLoadError)}</p>` : '') + '<div class="sorting-houses">' + keys.map(key => {
+    const highest = Math.max(...keys.map(key => Number(totalsByHouse[key]) || 0));
+    $('studentProfileHousesContent').innerHTML = (cls && cls.rosterLoadError ? `<p class="muted">Non riesco a leggere l'elenco completo della classe. È necessario autorizzare in Supabase la lettura dei compagni della stessa classe. Dettaglio: ${esc(cls.rosterLoadError)}</p>` : '') + '<div class="grid">' + keys.map(key => {
       const list = members.filter(st => st.house === key).slice().sort((a,b) => a.name.localeCompare(b.name,'it'));
-      return `<section class="sorting-house ${key}"><div class="sorting-house-head"><span class="sorting-house-crest">${houseSigils[key]}</span><h3>${labels[key]}</h3><span class="sorting-house-count">${list.length} ${list.length===1?'studente':'studenti'}</span></div><div class="sorting-student-list">${list.map(st=>`<span>${esc(st.name)}</span>`).join('') || '<span>Nessuno studente assegnato</span>'}</div></section>`;
+      const average = list.length ? list.reduce((sum, st) => sum + (Number(st.points) || 0), 0) / list.length : 0;
+      const best = list.slice().sort((a,b) => (Number(b.points)||0) - (Number(a.points)||0) || a.name.localeCompare(b.name,'it'))[0];
+      return `<article class="house ${key} ${highest > 0 && Number(totalsByHouse[key]) === highest ? 'leading' : ''}"><div class="sigil">${houseSigils[key]}</div><h2>${labels[key]}</h2><div class="points">${pointLabel(totalsByHouse[key])}</div><div class="house-stats"><div>Studenti: <b>${list.length}</b></div><div>Media: <b>${pointLabel(average)}</b></div><div>In testa: <b>${best ? esc(best.name) + ' (' + formatPoints(best.points || 0) + ')' : '—'}</b></div></div></article>`;
     }).join('') + '</div>';
-    $('studentProfileHouseMembers').style.display = 'none';
-    $('studentProfileHouseMembers').innerHTML = '';
   }
   function profileDate(value){
     if(!value) return 'Data non indicata';
@@ -2973,7 +2967,7 @@ if (inCastle) {
       return `<div class="student-profile-grade"><span><strong>${gradeLabel}</strong>${reference ? `<span style="display:block;color:var(--muted)">${esc(reference)}</span>` : ''}<span style="display:block;color:var(--muted)">${profileDate(h.date)}</span></span><strong>${esc(Number(h.points)>=0?'+':'')}${esc(pointLabel(h.points))}</strong></div>`;
     }).join('') : '<p>Nessun voto registrato.</p>';
     $('studentProfileStickersContent').textContent = 'Caricamento della collezione…';
-    showStudentProfilePanel('grades');
+    showStudentProfilePanel(null);
     window.scrollTo({top:0,behavior:'smooth'});
     await loadStudentProfileStickers(student, cls);
   }
@@ -3044,23 +3038,6 @@ if (inCastle) {
   $('studentProfileHousesBtn').addEventListener('click',()=>showStudentProfilePanel('houses'));
   $('studentProfileGradesBtn').addEventListener('click',()=>showStudentProfilePanel('grades'));
   $('studentProfileStickersBtn').addEventListener('click',()=>showStudentProfilePanel('stickers'));
-  $('studentProfileHouses').addEventListener('click',e=>{
-    const button=e.target.closest('[data-profile-house]');
-    if(!button) return;
-    const key=button.dataset.profileHouse;
-    const cls=activeClass();
-    if(!cls) return;
-    const members=(cls.students||[]).filter(st=>st.house===key).slice().sort((a,b)=>a.name.localeCompare(b.name,'it'));
-    const labels={g:'Grifondoro',t:'Tassorosso',r:'Corvonero',s:'Serpeverde'};
-    $('studentProfileHouses').querySelectorAll('[data-profile-house]').forEach(card=>{
-      const selected=card===button;
-      card.classList.toggle('selected',selected);
-      card.setAttribute('aria-expanded',selected?'true':'false');
-    });
-    const panel=$('studentProfileHouseMembers');
-    panel.style.display='block';
-    panel.innerHTML=`<h4>${houseSigils[key]} Studenti di ${labels[key]}</h4>${members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b><span>${pointLabel(st.points||0)}</span></div>`).join('') || '<div class="house-students-empty">Nessuno studente assegnato a questa Casata.</div>'}`;
-  });
   $('studentHistoryFromPointsBtn').addEventListener('click',()=>{
     const studentId = $('pointsStudent').value;
     if(studentId) openStudentProfile(studentId, true);
@@ -3251,7 +3228,7 @@ if (inCastle) {
       $('studentProfileGradesBtn').disabled=false;
       $('studentProfileStickersBtn').disabled=false;
       $('studentProfileView').querySelector('.student-profile-actions').style.display='flex';
-      showStudentProfilePanel('grades');
+      showStudentProfilePanel(null);
       $('studentPasswordMessage').textContent='Password aggiornata.';
       $('studentNewPassword').value=''; $('studentConfirmPassword').value='';
       showToast('Password personale impostata correttamente.');
@@ -3494,7 +3471,7 @@ if (inCastle) {
       $('studentProfileGradesBtn').disabled = false;
       $('studentProfileStickersBtn').disabled = false;
       $('studentProfileView').querySelector('.student-profile-actions').style.display = 'flex';
-      showStudentProfilePanel('grades');
+      showStudentProfilePanel(null);
     }
   }
   $('loginBtn').onclick = async () => {
