@@ -1294,10 +1294,10 @@ input, select, .authbox input {
     </section>
     <div class="student-profile-actions">
       <button type="button" class="btn" id="studentProfileHousesBtn">🏰 Le quattro Casate</button>
-      <button type="button" class="btn primary" id="studentProfileGradesBtn">📚 Storico voti</button>
+      <button type="button" class="btn" id="studentProfileGradesBtn">📚 Storico voti</button>
       <button type="button" class="btn" id="studentProfileStickersBtn">✨ Collezione sticker</button>
     </div>
-    <div class="student-profile-panel active" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
+    <div class="student-profile-panel" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
     <div class="student-profile-panel" id="studentProfileStickers"><div id="studentProfileStickersContent">Caricamento della collezione…</div></div>
   </section>
   <!-- Le Casate e la Coppa sono già visibili: non serve un menu duplicato. -->
@@ -2924,10 +2924,13 @@ if (inCastle) {
   const houseSigils = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
   function showStudentProfilePanel(which){
     const grades = which === 'grades';
+    const stickers = which === 'stickers';
+    // Nessun pannello è aperto all'ingresso nel profilo: si apre solo
+    // quello richiesto esplicitamente cliccando il relativo pulsante.
     $('studentProfileGrades').classList.toggle('active', grades);
-    $('studentProfileStickers').classList.toggle('active', !grades);
+    $('studentProfileStickers').classList.toggle('active', stickers);
     $('studentProfileGradesBtn').classList.toggle('primary', grades);
-    $('studentProfileStickersBtn').classList.toggle('primary', !grades);
+    $('studentProfileStickersBtn').classList.toggle('primary', stickers);
   }
   function profileDate(value){
     if(!value) return 'Data non indicata';
@@ -3040,7 +3043,7 @@ if (inCastle) {
       return `<div class="student-profile-grade"><span><strong>${gradeLabel}</strong>${reference ? `<span style="display:block;color:var(--muted)">${esc(reference)}</span>` : ''}<span style="display:block;color:var(--muted)">${profileDate(h.date)}</span></span><strong>${esc(Number(h.points)>=0?'+':'')}${esc(pointLabel(h.points))}</strong></div>`;
     }).join('') : '<p>Nessun voto registrato.</p>';
     $('studentProfileStickersContent').textContent = 'Caricamento della collezione…';
-    showStudentProfilePanel('grades');
+    showStudentProfilePanel(null);
     window.scrollTo({top:0,behavior:'smooth'});
     await loadStudentProfileStickers(student, cls);
   }
@@ -3300,7 +3303,7 @@ if (inCastle) {
       $('studentProfileGradesBtn').disabled=false;
       $('studentProfileStickersBtn').disabled=false;
       $('studentProfileView').querySelector('.student-profile-actions').style.display='flex';
-      showStudentProfilePanel('grades');
+      showStudentProfilePanel(null);
       $('studentPasswordMessage').textContent='Password aggiornata.';
       $('studentNewPassword').value=''; $('studentConfirmPassword').value='';
       showToast('Password personale impostata correttamente.');
@@ -3544,7 +3547,7 @@ if (inCastle) {
       $('studentProfileGradesBtn').disabled = false;
       $('studentProfileStickersBtn').disabled = false;
       $('studentProfileView').querySelector('.student-profile-actions').style.display = 'flex';
-      showStudentProfilePanel('grades');
+      showStudentProfilePanel(null);
     }
   }
   $('loginBtn').onclick = async () => {
