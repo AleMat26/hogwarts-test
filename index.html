@@ -3245,29 +3245,44 @@ if (inCastle) {
   async function updateStudentAccountInfo(preserveStatus=false){
     const student = selectedAccountStudent();
     $('studentAccountUsername').disabled = false;
-    $('createStudentAccountBtn').disabled = !student;
+    $('createStudentAccountBtn').disabled = true;
     $('resetStudentPasswordBtn').disabled = true;
     if(!student){ if(!preserveStatus) $('studentAccountStatus').textContent = 'Seleziona uno studente.'; return; }
-    if(!student.dbId){ if(!preserveStatus) $('studentAccountStatus').textContent = 'Questo studente non ha ancora un ID database. Sincronizza prima la classe.'; $('createStudentAccountBtn').disabled = true; return; }
+    if(!student.dbId){ if(!preserveStatus) $('studentAccountStatus').textContent = 'Questo studente non ha ancora un ID database. Sincronizza prima la classe.'; return; }
     if(!preserveStatus) $('studentAccountStatus').textContent = 'Verifica account in corso…';
     try{
-      const {data,error}=await supabase.from('student_accounts').select('student_id,username,must_change_password').eq('student_id',student.dbId).maybeSingle();
-      if(error) throw error;
-      if(data){
-        if(!preserveStatus) $('studentAccountStatus').textContent = `Account già creato · Nome utente: ${data.username} · ${data.must_change_password ? 'Password temporanea da cambiare al prossimo accesso' : 'Password personale già impostata'}.`;
-        $('studentAccountUsername').value = data.username;
+      // La lettura passa dalla Edge Function, che usa il client admin e non dipende dalle policy RLS di student_accounts.
+      const {data,error}=await supabase.functions.invoke('manage-student-account',{body:{action:'get_account',student_id:student.dbId}});
+      if(error){
+        let serverDetail='';
+        try{
+          const context=error.context;
+          if(context && typeof context.json==='function'){
+            const payload=await context.json();
+            serverDetail=payload?.message || payload?.error || '';
+          }
+        }catch(_){}
+        throw new Error(serverDetail || error.message || 'Errore durante la verifica dell’account.');
+      }
+      if(!data || typeof data!=='object') throw new Error('La funzione non ha restituito dati validi.');
+      if(data.found && data.account){
+        const account=data.account;
+        if(!preserveStatus) $('studentAccountStatus').textContent = `Account già creato · Nome utente: ${account.username} · ${account.must_change_password ? 'Password temporanea da cambiare al prossimo accesso' : 'Password personale già impostata'}.`;
+        $('studentAccountUsername').value = account.username;
         $('studentAccountUsername').disabled = true;
         $('createStudentAccountBtn').disabled = true;
         $('resetStudentPasswordBtn').disabled = false;
       }else{
         if(!preserveStatus) $('studentAccountStatus').textContent = 'Nessun account associato. Scegli un nome utente e crea l’account.';
         $('studentAccountUsername').value = '';
+        $('studentAccountUsername').disabled = false;
         $('createStudentAccountBtn').disabled = false;
       }
     }catch(error){
       console.error('Verifica account studente non riuscita:',error);
       if(!preserveStatus) $('studentAccountStatus').textContent = 'Non riesco a verificare l’account: '+(error.message||'errore sconosciuto');
       $('createStudentAccountBtn').disabled = true;
+      $('resetStudentPasswordBtn').disabled = true;
     }
   }
   async function manageStudentAccount(action){
