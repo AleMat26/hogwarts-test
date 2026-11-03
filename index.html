@@ -1303,7 +1303,6 @@ input, select, .authbox input {
       </div>
       <section class="card student-profile-house-members" id="studentProfileHouseMembers" aria-live="polite" style="display:none">
         <h3 id="studentProfileHouseMembersTitle">Studenti della Casata</h3>
-        <input id="studentProfileHouseSearch" class="house-search" type="search" placeholder="Cerca uno studente in questa Casata…" aria-label="Cerca studente nella Casata">
         <div id="studentProfileHouseMembersList" class="list"></div>
       </section>
 
@@ -2959,6 +2958,8 @@ if (inCastle) {
     $('studentProfileStickers').classList.toggle('active', stickers);
     $('studentProfileGradesBtn').classList.toggle('primary', grades);
     $('studentProfileStickersBtn').classList.toggle('primary', stickers);
+    $('studentProfileHouseMembers').style.display = 'none';
+    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
   }
   function profileDate(value){
     if(!value) return 'Data non indicata';
@@ -2999,24 +3000,27 @@ if (inCastle) {
     });
   }
 
-  function showStudentProfileHouseMembers(houseKey, preserveSearch=false){
+  function showStudentProfileHouseMembers(houseKey){
     const panel=$('studentProfileHouseMembers');
-    if(!preserveSearch) $('studentProfileHouseSearch').value='';
-    const query=($('studentProfileHouseSearch').value || '').trim().toLocaleLowerCase('it');
     const members=studentHouseRosterReady
-      ? studentHouseRoster.filter(st=>st.house===houseKey && st.name.toLocaleLowerCase('it').includes(query)).slice().sort((a,b)=>a.name.localeCompare(b.name,'it'))
+      ? studentHouseRoster.filter(st=>st.house===houseKey).slice().sort((a,b)=>a.name.localeCompare(b.name,'it'))
       : [];
     const label=houses[houseKey] || 'Casata';
     $('studentProfileHouseMembersTitle').textContent = 'Studenti di ' + label + ' · ' + (activeClass()?.name || 'Classe');
     $('studentProfileHouseMembersList').innerHTML = !studentHouseRosterReady
       ? `<div class="house-students-empty">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</div>`
       : members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b><span>${pointLabel(st.points||0)}</span></div>`).join('')
-        || `<div class="house-students-empty">${query ? 'Nessuno studente corrisponde alla ricerca.' : 'Nessuno studente assegnato a questa Casata.'}</div>`;
+        || '<div class="house-students-empty">Nessuno studente assegnato a questa Casata.</div>';
     panel.style.display='block';
+    $('studentProfileGrades').classList.remove('active');
+    $('studentProfileStickers').classList.remove('active');
+    $('studentProfileGradesBtn').classList.remove('primary');
+    $('studentProfileStickersBtn').classList.remove('primary');
     document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.toggle('selected',card.dataset.studentHouseCard===houseKey));
   }
 
   function openStudentProfileHouseSummary(){
+    showStudentProfilePanel(null);
     $('modalTitle').textContent = 'Le quattro Casate';
     $('result').innerHTML = studentHouseRosterReady
       ? buildHouseCompositionMarkup(studentHouseRoster, activeClass()?.name || '')
@@ -3029,10 +3033,6 @@ if (inCastle) {
     const choose=()=>showStudentProfileHouseMembers(card.dataset.studentHouseCard);
     card.addEventListener('click',choose);
     card.addEventListener('keydown',event=>{ if(event.key==='Enter'||event.key===' '){event.preventDefault();choose();} });
-  });
-  $('studentProfileHouseSearch').addEventListener('input',()=>{
-    const selected=document.querySelector('[data-student-house-card].selected');
-    if(selected) showStudentProfileHouseMembers(selected.dataset.studentHouseCard, true);
   });
   $('studentProfileHousesBtn').addEventListener('click',openStudentProfileHouseSummary);
 
@@ -3061,7 +3061,6 @@ if (inCastle) {
     $('studentProfileSigil').textContent = houseSigils[student.house] || '🎩';
     $('studentProfileHousePoints').textContent = `${formatPoints(student.house ? totalsNow[student.house] : 0)} pt`;
     $('studentProfileHouseMembers').style.display='none';
-    $('studentProfileHouseSearch').value='';
     document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
     renderStudentProfileHouses(cls);
     const entries = (student.history || []).slice().sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
@@ -3138,6 +3137,26 @@ if (inCastle) {
     openedStudentProfileId = null;
     window.scrollTo({top:profilePreviousClassScroll,behavior:'smooth'});
   }
+  // Come nella modalità docente, un clic sullo sfondo chiude il pannello aperto.
+  // I clic sui pulsanti, sulle quattro Casate o dentro il pannello non lo chiudono.
+  document.addEventListener('click', e => {
+    if(!$('studentProfileView').classList.contains('active')) return;
+    const housePanel = $('studentProfileHouseMembers');
+    const gradesPanel = $('studentProfileGrades');
+    const stickersPanel = $('studentProfileStickers');
+    const houseOpen = housePanel.style.display !== 'none';
+    const gradesOpen = gradesPanel.classList.contains('active');
+    const stickersOpen = stickersPanel.classList.contains('active');
+    if(!houseOpen && !gradesOpen && !stickersOpen) return;
+    if(e.target.closest('#studentProfileHouseMembers, #studentProfileGrades, #studentProfileStickers, [data-student-house-card], .student-profile-actions')) return;
+    housePanel.style.display = 'none';
+    gradesPanel.classList.remove('active');
+    stickersPanel.classList.remove('active');
+    $('studentProfileGradesBtn').classList.remove('primary');
+    $('studentProfileStickersBtn').classList.remove('primary');
+    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
+  });
+
   $('studentProfileBack').addEventListener('click',closeStudentProfile);
   $('studentProfileGradesBtn').addEventListener('click',()=>showStudentProfilePanel('grades'));
   $('studentProfileStickersBtn').addEventListener('click',()=>showStudentProfilePanel('stickers'));
