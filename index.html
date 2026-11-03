@@ -1126,7 +1126,35 @@ input, select, .authbox input {
 .student-profile-house-group h4 { margin:0 0 10px; color:var(--gold); font:700 16px Georgia,serif; }
 .student-profile-house-group .house-student-line { margin-top:7px; }
 @media(max-width:700px){.student-profile-houses .student-house-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.student-profile-house-groups{grid-template-columns:1fr}}
-.student-profile-actions { display:flex; gap:10px; flex-wrap:wrap; margin:16px 0; }
+.student-profile-actions {
+  display:flex;
+  align-items:stretch;
+  gap:10px;
+  flex-wrap:nowrap;
+  width:100%;
+  box-sizing:border-box;
+  margin:16px 0;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#12151e;
+}
+.student-profile-actions .btn {
+  flex:1 1 0;
+  min-width:0;
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  white-space:normal;
+  line-height:1.25;
+  padding:10px 8px;
+}
+@media(max-width:520px){
+  .student-profile-actions{gap:6px;padding:7px}
+  .student-profile-actions .btn{font-size:12px;padding:9px 4px}
+}
 .student-profile-panel { display:none; padding:18px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
 .student-profile-panel.active { display:block; }
 .student-profile-grade { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px; border-bottom:1px solid #3f3b32; font:14px/1.5 system-ui,sans-serif; }
