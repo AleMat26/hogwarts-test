@@ -1108,6 +1108,18 @@ input, select, .authbox input {
 .student-profile-meta { color:var(--muted); font:14px/1.7 system-ui,sans-serif; }
 .student-profile-house { text-align:center; min-width:110px; font-size:46px; }
 .student-profile-house strong { display:block; font:700 18px system-ui,sans-serif; color:var(--gold); }
+.student-profile-houses { margin:18px 0; }
+.student-profile-houses .student-house-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+.student-profile-houses .student-house-card { cursor:pointer; min-width:0; }
+.student-profile-houses .student-house-card:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+.student-profile-houses .student-house-card.selected { box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(216,181,106,.2); }
+.student-profile-house-summary { display:none; margin-top:16px; padding:18px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
+.student-profile-house-summary.active { display:block; }
+.student-profile-house-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.student-profile-house-group { padding:12px; border:1px solid #ffffff20; border-radius:10px; min-width:0; }
+.student-profile-house-group h4 { margin:0 0 10px; color:var(--gold); font:700 16px Georgia,serif; }
+.student-profile-house-group .house-student-line { margin-top:7px; }
+@media(max-width:700px){.student-profile-houses .student-house-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.student-profile-house-groups{grid-template-columns:1fr}}
 .student-profile-actions { display:flex; gap:10px; flex-wrap:wrap; margin:16px 0; }
 .student-profile-panel { display:none; padding:18px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
 .student-profile-panel.active { display:block; }
@@ -1133,24 +1145,6 @@ input, select, .authbox input {
 .student-sticker-back strong { color:var(--gold); font-size:15px; }
 .student-profile-link { border:0; padding:0; background:none; color:var(--paper); font:700 16px Georgia,serif; text-decoration:underline dotted var(--gold); text-underline-offset:4px; cursor:pointer; }
 .student-profile-link:hover { color:var(--gold); }
-
-.student-profile-houses-section { margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(145deg,rgba(35,42,57,.94),rgba(20,25,37,.96)); }
-.student-profile-houses-section > h3 { margin:0 0 14px; color:var(--gold-soft); font-size:20px; }
-.student-profile-houses { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
-.student-profile-house-card { min-width:0; padding:14px 10px; border:1px solid currentColor; border-radius:13px; background:rgba(255,255,255,.035); color:var(--paper); text-align:center; cursor:pointer; font-family:system-ui,sans-serif; transition:transform .18s,border-color .18s,background .18s; }
-.student-profile-house-card:hover,.student-profile-house-card:focus-visible,.student-profile-house-card.selected { transform:translateY(-2px); outline:none; border-color:var(--gold-soft); background:rgba(226,194,122,.10); }
-.student-profile-house-card .crest { display:block; width:auto; height:auto; margin:0 0 7px; font-size:27px; filter:none; }
-.student-profile-house-card strong { display:block; color:#f5ecd9; font:700 14px/1.3 Georgia,serif; }
-.student-profile-house-card .house-card-points { display:block; margin-top:8px; color:var(--gold-soft); font-weight:800; font-size:13px; }
-.student-profile-house-card small { display:block; margin-top:4px; color:var(--muted); font-size:11px; }
-.student-profile-house-members { margin-top:13px; padding:13px; border:1px solid rgba(226,194,122,.25); border-radius:12px; background:rgba(0,0,0,.12); }
-.student-profile-house-members h4 { margin:0 0 10px; color:var(--gold-soft); font:700 16px Georgia,serif; }
-.student-profile-house-members .house-student-line { margin-top:7px; }
-.student-profile-navigation { margin-top:18px; padding:16px; border:1px solid var(--line); border-radius:16px; background:rgba(12,15,23,.32); }
-.student-profile-navigation .student-profile-actions { margin:0 0 14px; }
-.student-profile-navigation .student-profile-actions .btn { flex:1 1 170px; }
-.student-profile-navigation .student-profile-panel { background:rgba(9,12,19,.28); }
-@media(max-width:700px){.student-profile-houses{grid-template-columns:repeat(2,minmax(0,1fr));}.student-profile-navigation .student-profile-actions .btn{flex:1 1 100%;}}
 @media(max-width:600px){.student-profile-head{align-items:flex-start;padding:16px}.student-profile-house{min-width:74px;font-size:36px}.student-profile-house strong{font-size:15px}.student-sticker-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 </style>
@@ -1266,6 +1260,18 @@ input, select, .authbox input {
       <div><h2 class="student-profile-name" id="studentProfileName">Studente</h2><div class="student-profile-meta" id="studentProfileMeta"></div></div>
       <div class="student-profile-house"><span id="studentProfileSigil">✦</span><strong id="studentProfileHousePoints">0 pt</strong></div>
     </div>
+    <section class="student-profile-houses" id="studentProfileHouses" aria-label="Le quattro Casate">
+      <div class="student-house-grid">
+        <article class="house g student-house-card" data-student-house-card="g" role="button" tabindex="0" aria-label="Visualizza gli studenti di Grifondoro"><div class="sigil">🦁</div><h2>Grifondoro</h2><p>Coraggio, audacia e spirito d'iniziativa.</p><div class="points" data-student-house-points="g">0 punti</div></article>
+        <article class="house t student-house-card" data-student-house-card="t" role="button" tabindex="0" aria-label="Visualizza gli studenti di Tassorosso"><div class="sigil">🦡</div><h2>Tassorosso</h2><p>Lealtà, pazienza e lavoro di squadra.</p><div class="points" data-student-house-points="t">0 punti</div></article>
+        <article class="house r student-house-card" data-student-house-card="r" role="button" tabindex="0" aria-label="Visualizza gli studenti di Corvonero"><div class="sigil">🦅</div><h2>Corvonero</h2><p>Curiosità, ingegno e amore per la conoscenza.</p><div class="points" data-student-house-points="r">0 punti</div></article>
+        <article class="house s student-house-card" data-student-house-card="s" role="button" tabindex="0" aria-label="Visualizza gli studenti di Serpeverde"><div class="sigil">🐍</div><h2>Serpeverde</h2><p>Ambizione, determinazione e astuzia.</p><div class="points" data-student-house-points="s">0 punti</div></article>
+      </div>
+      <section class="student-profile-house-summary" id="studentProfileHouseSummary" aria-live="polite">
+        <h3>Studenti suddivisi per Casata · <span id="studentProfileHouseClassName"></span></h3>
+        <div class="student-profile-house-groups" id="studentProfileHouseGroups"></div>
+      </section>
+    </section>
     <section class="student-password-change" id="studentPasswordChangePanel" aria-live="polite">
       <h3>🔒 Imposta la tua password personale</h3>
       <p class="class-manager-note">Per continuare, sostituisci la password temporanea con una password personale di almeno 10 caratteri.</p>
@@ -1278,16 +1284,12 @@ input, select, .authbox input {
       <button type="button" class="btn primary" id="saveStudentPasswordBtn">Salva nuova password</button>
       <div class="student-account-status" id="studentPasswordMessage"></div>
     </section>
-    <section class="student-profile-navigation" aria-label="Sezioni del profilo">
-      <div class="student-profile-actions">
-        <button type="button" class="btn" id="studentProfileHousesBtn">🏰 Le quattro Casate</button>
-        <button type="button" class="btn" id="studentProfileGradesBtn">📚 Storico voti</button>
-        <button type="button" class="btn" id="studentProfileStickersBtn">✨ Storico sticker</button>
-      </div>
-      <div class="student-profile-panel" id="studentProfileHousesPanel"><div id="studentProfileHousesContent"></div></div>
-      <div class="student-profile-panel" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
-      <div class="student-profile-panel" id="studentProfileStickers"><div id="studentProfileStickersContent">Caricamento della collezione…</div></div>
-    </section>
+    <div class="student-profile-actions">
+      <button type="button" class="btn primary" id="studentProfileGradesBtn">📚 Storico voti</button>
+      <button type="button" class="btn" id="studentProfileStickersBtn">✨ Collezione sticker</button>
+    </div>
+    <div class="student-profile-panel active" id="studentProfileGrades"><div id="studentProfileGradesContent"></div></div>
+    <div class="student-profile-panel" id="studentProfileStickers"><div id="studentProfileStickersContent">Caricamento della collezione…</div></div>
   </section>
   <!-- Le Casate e la Coppa sono già visibili: non serve un menu duplicato. -->
 
@@ -1524,6 +1526,9 @@ input, select, .authbox input {
   let studentAccountMode = false;
   let studentAccountRecord = null;
   let studentAccountBusy = false;
+  let studentHouseRoster = [];
+  let studentHouseRosterReady = false;
+  let studentHouseRosterError = '';
   // Stato temporaneo dell'anteprima di importazione Excel.
   let pendingGradeImport = null;
   let gradeImportOpen = false;
@@ -2909,32 +2914,48 @@ if (inCastle) {
   let profileReturnToPoints = false;
   const houseSigils = { g:'🦁', t:'🦡', r:'🦅', s:'🐍' };
   function showStudentProfilePanel(which){
-    const selected = ['houses','grades','stickers'].includes(which) ? which : null;
-    $('studentProfileHousesPanel').classList.toggle('active', selected === 'houses');
-    $('studentProfileGrades').classList.toggle('active', selected === 'grades');
-    $('studentProfileStickers').classList.toggle('active', selected === 'stickers');
-    $('studentProfileHousesBtn').classList.toggle('primary', selected === 'houses');
-    $('studentProfileGradesBtn').classList.toggle('primary', selected === 'grades');
-    $('studentProfileStickersBtn').classList.toggle('primary', selected === 'stickers');
-  }
-  function renderStudentProfileHouses(cls){
-    const keys = ['g','t','r','s'];
-    const members = cls && Array.isArray(cls.students) ? cls.students : [];
-    const totalsByHouse = totals(members);
-    const labels = {g:'Grifondoro',t:'Tassorosso',r:'Corvonero',s:'Serpeverde'};
-    const highest = Math.max(...keys.map(key => Number(totalsByHouse[key]) || 0));
-    $('studentProfileHousesContent').innerHTML = (cls && cls.rosterLoadError ? `<p class="muted">Non riesco a leggere l'elenco completo della classe. È necessario autorizzare in Supabase la lettura dei compagni della stessa classe. Dettaglio: ${esc(cls.rosterLoadError)}</p>` : '') + '<div class="grid">' + keys.map(key => {
-      const list = members.filter(st => st.house === key).slice().sort((a,b) => a.name.localeCompare(b.name,'it'));
-      const average = list.length ? list.reduce((sum, st) => sum + (Number(st.points) || 0), 0) / list.length : 0;
-      const best = list.slice().sort((a,b) => (Number(b.points)||0) - (Number(a.points)||0) || a.name.localeCompare(b.name,'it'))[0];
-      return `<article class="house ${key} ${highest > 0 && Number(totalsByHouse[key]) === highest ? 'leading' : ''}"><div class="sigil">${houseSigils[key]}</div><h2>${labels[key]}</h2><div class="points">${pointLabel(totalsByHouse[key])}</div><div class="house-stats"><div>Studenti: <b>${list.length}</b></div><div>Media: <b>${pointLabel(average)}</b></div><div>In testa: <b>${best ? esc(best.name) + ' (' + formatPoints(best.points || 0) + ')' : '—'}</b></div></div></article>`;
-    }).join('') + '</div>';
+    const grades = which === 'grades';
+    $('studentProfileGrades').classList.toggle('active', grades);
+    $('studentProfileStickers').classList.toggle('active', !grades);
+    $('studentProfileGradesBtn').classList.toggle('primary', grades);
+    $('studentProfileStickersBtn').classList.toggle('primary', !grades);
   }
   function profileDate(value){
     if(!value) return 'Data non indicata';
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('it-IT');
   }
+  function renderStudentProfileHouses(cls){
+    const roster = studentHouseRosterReady ? studentHouseRoster : [];
+    const totalsByHouse = {g:0,t:0,r:0,s:0};
+    roster.forEach(st=>{ if(st.house && Object.prototype.hasOwnProperty.call(totalsByHouse,st.house)) totalsByHouse[st.house] += Number(st.points)||0; });
+    Object.entries(totalsByHouse).forEach(([key,value])=>{
+      const el=document.querySelector(`[data-student-house-points="${key}"]`);
+      if(el) el.textContent=pointLabel(value);
+    });
+    $('studentProfileHouseClassName').textContent=cls?.name || '';
+    if(!studentHouseRosterReady){
+      $('studentProfileHouseGroups').innerHTML=`<div class="house-students-empty">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</div>`;
+      return;
+    }
+    $('studentProfileHouseGroups').innerHTML=Object.entries(houses).map(([key,label])=>{
+      const members=roster.filter(st=>st.house===key).sort((a,b)=>a.name.localeCompare(b.name,'it'));
+      return `<section class="student-profile-house-group"><h4>${({g:'🦁',t:'🦡',r:'🦅',s:'🐍'})[key]} ${label} · ${members.length}</h4>${members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b><span>${pointLabel(st.points||0)}</span></div>`).join('') || '<div class="house-students-empty">Nessuno studente assegnato.</div>'}</section>`;
+    }).join('');
+  }
+
+  function toggleStudentProfileHouses(){
+    const panel=$('studentProfileHouseSummary');
+    const opening=!panel.classList.contains('active');
+    panel.classList.toggle('active',opening);
+    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.toggle('selected',opening));
+    if(opening) renderStudentProfileHouses(activeClass());
+  }
+  document.querySelectorAll('[data-student-house-card]').forEach(card=>{
+    card.addEventListener('click',toggleStudentProfileHouses);
+    card.addEventListener('keydown',event=>{ if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleStudentProfileHouses();} });
+  });
+
   async function openStudentProfile(studentId, returnToPoints = false){
     const student = state.students.find(st => String(st.id) === String(studentId));
     if(!student) return;
@@ -2959,6 +2980,8 @@ if (inCastle) {
     const totalsNow = totals(state.students);
     $('studentProfileSigil').textContent = houseSigils[student.house] || '🎩';
     $('studentProfileHousePoints').textContent = `${formatPoints(student.house ? totalsNow[student.house] : 0)} pt`;
+    $('studentProfileHouseSummary').classList.remove('active');
+    document.querySelectorAll('[data-student-house-card]').forEach(card=>card.classList.remove('selected'));
     renderStudentProfileHouses(cls);
     const entries = (student.history || []).slice().sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
     $('studentProfileGradesContent').innerHTML = entries.length ? entries.map(h=>{
@@ -2967,7 +2990,7 @@ if (inCastle) {
       return `<div class="student-profile-grade"><span><strong>${gradeLabel}</strong>${reference ? `<span style="display:block;color:var(--muted)">${esc(reference)}</span>` : ''}<span style="display:block;color:var(--muted)">${profileDate(h.date)}</span></span><strong>${esc(Number(h.points)>=0?'+':'')}${esc(pointLabel(h.points))}</strong></div>`;
     }).join('') : '<p>Nessun voto registrato.</p>';
     $('studentProfileStickersContent').textContent = 'Caricamento della collezione…';
-    showStudentProfilePanel(null);
+    showStudentProfilePanel('grades');
     window.scrollTo({top:0,behavior:'smooth'});
     await loadStudentProfileStickers(student, cls);
   }
@@ -3035,7 +3058,6 @@ if (inCastle) {
     window.scrollTo({top:profilePreviousClassScroll,behavior:'smooth'});
   }
   $('studentProfileBack').addEventListener('click',closeStudentProfile);
-  $('studentProfileHousesBtn').addEventListener('click',()=>showStudentProfilePanel('houses'));
   $('studentProfileGradesBtn').addEventListener('click',()=>showStudentProfilePanel('grades'));
   $('studentProfileStickersBtn').addEventListener('click',()=>showStudentProfilePanel('stickers'));
   $('studentHistoryFromPointsBtn').addEventListener('click',()=>{
@@ -3228,7 +3250,7 @@ if (inCastle) {
       $('studentProfileGradesBtn').disabled=false;
       $('studentProfileStickersBtn').disabled=false;
       $('studentProfileView').querySelector('.student-profile-actions').style.display='flex';
-      showStudentProfilePanel(null);
+      showStudentProfilePanel('grades');
       $('studentPasswordMessage').textContent='Password aggiornata.';
       $('studentNewPassword').value=''; $('studentConfirmPassword').value='';
       showToast('Password personale impostata correttamente.');
@@ -3406,12 +3428,6 @@ if (inCastle) {
     const { data: classRow, error: classError } = await supabase.from('classes')
       .select('id,name,school_year,archived,reset_for_deletion').eq('id', studentRow.class_id).single();
     if(classError) throw classError;
-    // Il profilo studente carica anche l'elenco della propria classe: non è
-    // limitato agli studenti che hanno già un account di accesso.
-    // La policy RLS deve consentire la lettura dei soli compagni della stessa classe.
-    const { data: rosterRows, error: rosterError } = await supabase.from('students')
-      .select('id,client_id,name,house_id,points')
-      .eq('class_id', studentRow.class_id).order('name');
     const { data: gradeRows, error: gradeError } = await supabase.from('grades')
       .select('id,student_id,history_id,grade,points,entry_type,reference,created_at')
       .eq('student_id', studentRow.id).order('created_at');
@@ -3421,27 +3437,36 @@ if (inCastle) {
       grade: h.entry_type === 'encomio' ? 'Encomio speciale' : h.entry_type === 'malus' ? 'Malus' : h.grade,
       points: Number(h.points) || 0, reference: h.reference || '', dbId: h.id
     }));
+    // Il profilo studente mostra l'elenco dei compagni della sola classe di appartenenza.
+    // La lettura resta soggetta alle policy RLS già configurate nel database.
+    studentHouseRoster = [];
+    studentHouseRosterReady = false;
+    studentHouseRosterError = 'Caricamento degli studenti della classe…';
+    try {
+      const { data: rosterRows, error: rosterError } = await supabase.from('students')
+        .select('id,name,house_id,points').eq('class_id', studentRow.class_id).order('name');
+      if(rosterError) throw rosterError;
+      studentHouseRoster = (rosterRows || []).map(row=>({
+        id:String(row.id), name:String(row.name || ''),
+        house:['g','t','r','s'].includes(row.house_id) ? row.house_id : null,
+        points:Number(row.points)||0
+      }));
+      studentHouseRosterReady = true;
+      studentHouseRosterError = '';
+    } catch(rosterError) {
+      console.warn('Elenco compagni non disponibile per le policy del database:', rosterError);
+      studentHouseRosterError = 'L’elenco completo della classe non è disponibile con i permessi attuali.';
+    }
     const student = {
       id: studentRow.client_id || String(studentRow.id), dbId: String(studentRow.id),
       clientId: studentRow.client_id || String(studentRow.id), name: studentRow.name,
       house: ['g','t','r','s'].includes(studentRow.house_id) ? studentRow.house_id : null,
       points: Number(studentRow.points) || 0, history
     };
-    const roster = (rosterRows || []).map(row => ({
-      id: row.client_id || String(row.id), dbId: String(row.id),
-      clientId: row.client_id || String(row.id), name: row.name,
-      house: ['g','t','r','s'].includes(row.house_id) ? row.house_id : null,
-      points: Number(row.points) || 0,
-      history: String(row.id) === String(studentRow.id) ? history : []
-    }));
-    // Mantiene sempre il profilo personale anche se la policy non restituisce
-    // temporaneamente la riga dello studente nella query dell'elenco classe.
-    if(!roster.some(row => String(row.dbId) === String(studentRow.id))) roster.push(student);
     const cls = {
       id: classRow.id, dbId: String(classRow.id), clientId: String(classRow.id),
       name: classRow.name, schoolYear: classRow.school_year || DEFAULT_YEAR,
-      students: roster, rosterLoadError: rosterError ? rosterError.message : '',
-      nextId: roster.length + 1, archived: Boolean(classRow.archived),
+      students: [student], nextId: 2, archived: Boolean(classRow.archived),
       resetForDeletion: Boolean(classRow.reset_for_deletion)
     };
     state = normalizeState({ classes:[cls], activeClassId:cls.id, nextClassId:2 });
@@ -3457,7 +3482,6 @@ if (inCastle) {
     $('studentProfileBack').style.display = 'inline-flex';
     if(account.must_change_password){
       $('studentPasswordChangePanel').classList.add('active');
-      $('studentProfileHousesBtn').disabled = true;
       $('studentProfileGradesBtn').disabled = true;
       $('studentProfileStickersBtn').disabled = true;
       $('studentProfileView').querySelector('.student-profile-actions').style.display = 'none';
@@ -3467,11 +3491,10 @@ if (inCastle) {
       $('studentNewPassword').focus();
     } else {
       $('studentPasswordChangePanel').classList.remove('active');
-      $('studentProfileHousesBtn').disabled = false;
       $('studentProfileGradesBtn').disabled = false;
       $('studentProfileStickersBtn').disabled = false;
       $('studentProfileView').querySelector('.student-profile-actions').style.display = 'flex';
-      showStudentProfilePanel(null);
+      showStudentProfilePanel('grades');
     }
   }
   $('loginBtn').onclick = async () => {
