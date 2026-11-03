@@ -2929,7 +2929,7 @@ if (inCastle) {
     const counts = Object.fromEntries(keys.map(key => [key, members.filter(st => st.house === key).length]));
     const labels = {g:'Grifondoro',t:'Tassorosso',r:'Corvonero',s:'Serpeverde'};
     $('studentProfileHouses').innerHTML = keys.map(key => `<button type="button" class="student-profile-house-card ${key}" data-profile-house="${key}" aria-expanded="false"><span class="crest">${houseSigils[key]}</span><strong>${labels[key]}</strong><span class="house-card-points">${pointLabel(totalsByHouse[key])}</span><small>${counts[key]} ${counts[key] === 1 ? 'studente' : 'studenti'}</small></button>`).join('');
-    $('studentProfileHousesContent').innerHTML = '<div class="sorting-houses">' + keys.map(key => {
+    $('studentProfileHousesContent').innerHTML = (cls && cls.rosterLoadError ? `<p class="muted">Non riesco a leggere l'elenco completo della classe. È necessario autorizzare in Supabase la lettura dei compagni della stessa classe. Dettaglio: ${esc(cls.rosterLoadError)}</p>` : '') + '<div class="sorting-houses">' + keys.map(key => {
       const list = members.filter(st => st.house === key).slice().sort((a,b) => a.name.localeCompare(b.name,'it'));
       return `<section class="sorting-house ${key}"><div class="sorting-house-head"><span class="sorting-house-crest">${houseSigils[key]}</span><h3>${labels[key]}</h3><span class="sorting-house-count">${list.length} ${list.length===1?'studente':'studenti'}</span></div><div class="sorting-student-list">${list.map(st=>`<span>${esc(st.name)}</span>`).join('') || '<span>Nessuno studente assegnato</span>'}</div></section>`;
     }).join('') + '</div>';
@@ -3429,6 +3429,12 @@ if (inCastle) {
     const { data: classRow, error: classError } = await supabase.from('classes')
       .select('id,name,school_year,archived,reset_for_deletion').eq('id', studentRow.class_id).single();
     if(classError) throw classError;
+    // Il profilo studente carica anche l'elenco della propria classe: non è
+    // limitato agli studenti che hanno già un account di accesso.
+    // La policy RLS deve consentire la lettura dei soli compagni della stessa classe.
+    const { data: rosterRows, error: rosterError } = await supabase.from('students')
+      .select('id,client_id,name,house_id,points')
+      .eq('class_id', studentRow.class_id).order('name');
     const { data: gradeRows, error: gradeError } = await supabase.from('grades')
       .select('id,student_id,history_id,grade,points,entry_type,reference,created_at')
       .eq('student_id', studentRow.id).order('created_at');
@@ -3444,10 +3450,21 @@ if (inCastle) {
       house: ['g','t','r','s'].includes(studentRow.house_id) ? studentRow.house_id : null,
       points: Number(studentRow.points) || 0, history
     };
+    const roster = (rosterRows || []).map(row => ({
+      id: row.client_id || String(row.id), dbId: String(row.id),
+      clientId: row.client_id || String(row.id), name: row.name,
+      house: ['g','t','r','s'].includes(row.house_id) ? row.house_id : null,
+      points: Number(row.points) || 0,
+      history: String(row.id) === String(studentRow.id) ? history : []
+    }));
+    // Mantiene sempre il profilo personale anche se la policy non restituisce
+    // temporaneamente la riga dello studente nella query dell'elenco classe.
+    if(!roster.some(row => String(row.dbId) === String(studentRow.id))) roster.push(student);
     const cls = {
       id: classRow.id, dbId: String(classRow.id), clientId: String(classRow.id),
       name: classRow.name, schoolYear: classRow.school_year || DEFAULT_YEAR,
-      students: [student], nextId: 2, archived: Boolean(classRow.archived),
+      students: roster, rosterLoadError: rosterError ? rosterError.message : '',
+      nextId: roster.length + 1, archived: Boolean(classRow.archived),
       resetForDeletion: Boolean(classRow.reset_for_deletion)
     };
     state = normalizeState({ classes:[cls], activeClassId:cls.id, nextClassId:2 });
