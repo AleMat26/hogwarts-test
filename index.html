@@ -1112,7 +1112,8 @@ input, select, .authbox input {
 .student-profile-houses .student-house-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
 .student-profile-houses .student-house-card { cursor:pointer; min-width:0; }
 .student-profile-houses .student-house-card:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
-.student-profile-houses .student-house-card.selected { box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(216,181,106,.2); }
+/* La selezione serve solo a gestire il pannello: non deve evidenziare la Casata cliccata. Il bordo dorato è riservato esclusivamente alla Casata in testa. */
+.student-profile-houses .student-house-card.selected { box-shadow:none; border-color:color-mix(in srgb, currentColor 24%, transparent); }
 .student-profile-house-summary { display:none; margin-top:16px; padding:18px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
 .student-profile-house-members { display:none; margin-top:14px; padding:16px; border:1px solid var(--line); border-radius:14px; background:#12151e; }
 .student-profile-house-members.active { display:block; }
@@ -1521,10 +1522,10 @@ input, select, .authbox input {
   'use strict';
   
   const houses = { g: 'Grifondoro', t: 'Tassorosso', r: 'Corvonero', s: 'Serpeverde' };
-  const KEY = 'hogwartsState_test';
+  const KEY = 'hogwartsState';
   // Configurazione del client Supabase: usare esclusivamente la chiave pubblicabile.
-  const SUPABASE_URL = 'https://gzdtjfzehhthvmdvbhpe.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uYRroVRtg9BiaHdUjcjtBQ_eCICtNHi';
+  const SUPABASE_URL = 'https://wfcujsqswmmapddnzmew.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_hZbJF0N-cYDwWLIKI8g79Q_IHGxjC2G';
   // Archivio Sticker usa lo stesso progetto Supabase ufficiale: il client autenticato
   // di Hogwarts legge lo storico e genera URL temporanei per le immagini private.
   const STICKER_ARCHIVE_LINK_READY = true;
@@ -1541,7 +1542,7 @@ input, select, .authbox input {
   let publicScores = null;
   // La homepage non mostra classi locali finché Supabase non ha risposto.
   let publicDataStatus = 'loading'; // 'loading', 'loaded', 'error'
-  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId_test';
+  const PUBLIC_CLASS_KEY = 'hogwartsPublicClassId';
   const ALL_ACTIVE_CLASSES = '__all_active_classes__';
   const $ = id => document.getElementById(id);
   let toastTimer = null;
@@ -2987,6 +2988,21 @@ if (inCastle) {
     </div>`;
   }
 
+  // In modalità docente il roster della classe è già presente nello stato
+  // caricato da Supabase. Non deve dipendere dal caricamento riservato
+  // all'accesso degli account studente.
+  function prepareTeacherStudentHouseRoster(cls){
+    if(role !== 'teacher' || studentAccountMode || !cls) return;
+    studentHouseRoster = (cls.students || []).map(st=>({
+      id:String(st.dbId || st.id),
+      name:String(st.name || ''),
+      house:['g','t','r','s'].includes(st.house) ? st.house : null,
+      points:Number(st.points) || 0
+    }));
+    studentHouseRosterReady = true;
+    studentHouseRosterError = '';
+  }
+
   function renderStudentProfileHouses(cls){
     const roster = studentHouseRosterReady ? studentHouseRoster : [];
     const totalsByHouse = {g:0,t:0,r:0,s:0};
@@ -3009,7 +3025,7 @@ if (inCastle) {
     $('studentProfileHouseMembersTitle').textContent = 'Studenti di ' + label + ' · ' + (activeClass()?.name || 'Classe');
     $('studentProfileHouseMembersList').innerHTML = !studentHouseRosterReady
       ? `<div class="house-students-empty">${esc(studentHouseRosterError || 'Caricamento degli studenti della classe…')}</div>`
-      : members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b><span>${pointLabel(st.points||0)}</span></div>`).join('')
+      : members.map(st=>`<div class="house-student-line"><b>${esc(st.name)}</b>${studentAccountMode ? '' : `<span>${pointLabel(st.points||0)}</span>`}</div>`).join('')
         || '<div class="house-students-empty">Nessuno studente assegnato a questa Casata.</div>';
     panel.style.display='block';
     $('studentProfileGrades').classList.remove('active');
@@ -3041,6 +3057,9 @@ if (inCastle) {
     if(!student) return;
     const cls = activeClass();
     if(!cls) return;
+    // Il profilo docente usa i dati già caricati per la classe selezionata;
+    // il profilo studente continua invece a usare il roster letto con RLS.
+    prepareTeacherStudentHouseRoster(cls);
     profileReturnToPoints = !!returnToPoints;
     openedStudentProfileId = String(student.id);
     profilePreviousClassScroll = window.scrollY;
